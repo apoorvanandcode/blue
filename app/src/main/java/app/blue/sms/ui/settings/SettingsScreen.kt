@@ -79,6 +79,8 @@ class SettingsViewModel @Inject constructor(
         if (on) dailyScan.scheduleNext(repo.settings.first().dailyScanMinutes) else dailyScan.cancel()
     }
 
+    fun setSaveLocation(on: Boolean) = viewModelScope.launch { repo.setSaveLocation(on) }
+
     fun setDailyScanTime(minutes: Int) = viewModelScope.launch {
         repo.setDailyScanMinutes(minutes)
         repo.setDailyScan(true)
@@ -191,6 +193,8 @@ fun SettingsScreen(
             PlainRow(onClick = onManageCategories, chevron = true) { RowText("Categories", titleWeight = FontWeight.Normal) }
             PlainRow(onClick = onManageForWhom, chevron = true) { RowText("For whom: tags and contacts", titleWeight = FontWeight.Normal) }
             PlainRow(onClick = onManageSpam, chevron = true) { RowText("Spam senders", titleWeight = FontWeight.Normal) }
+
+            LocationSection(on = settings?.saveLocation == true, onChange = vm::setSaveLocation)
 
             GeminiSection(vm)
             GoogleSection()

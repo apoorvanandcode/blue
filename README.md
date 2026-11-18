@@ -6,6 +6,8 @@ A personal expense tracker for Android that reads your bank SMS. Blue turns debi
 - **Review** each entry: swipe right to confirm, left to skip. Blue remembers the category per merchant.
 - **Entries** and **Insights**: by category, account, person and merchant, compared with the previous period.
 - **Upcoming**: mandates, auto-debits and deliveries, closed automatically when the matching SMS arrives.
+- **Nicknames** for merchants (the bank's name is kept), and **own transfer** marking that keeps moves between your accounts out of totals.
+- **Optional:** "Save where I pay" notes the phone's location when a payment SMS arrives (stored only on the phone).
 - **Spam** sorting by sender, starred SMS.
 - **Optional:** your own Google Gemini API key for SMS the built-in rules don't recognise.
 - **Optional:** backup to your own Google Drive and export to Google Sheets.

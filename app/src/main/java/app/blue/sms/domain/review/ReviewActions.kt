@@ -30,6 +30,7 @@ private data class Snapshot(
     val accountId: Long?, val method: String?, val refNo: String?, val txnAt: Long?,
     val categoryId: Long?, val forWhomId: Long?, val notes: String?, val status: String,
     val isRefund: Boolean, val confirmedAt: Long?,
+    val locLat: Double? = null, val locLng: Double? = null, val locAccuracy: Float? = null, val locAt: Long? = null,
     /** Set when this action changed merchant memory. */
     val memoryMerchant: String? = null,
     val memoryBefore: MemorySnapshot? = null,
@@ -43,6 +44,7 @@ class ReviewActions @Inject constructor(
     private val txnDao: TransactionDao,
     private val memoryDao: MerchantMemoryDao,
     private val logDao: ActionLogDao,
+    private val aliasDao: app.blue.sms.data.db.MerchantAliasDao,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -79,14 +81,28 @@ class ReviewActions @Inject constructor(
     suspend fun skip(id: Long) = setStatus(id, TxnStatus.SKIPPED, "skip")
     suspend fun markDuplicate(id: Long) = setStatus(id, TxnStatus.DUPLICATE, "duplicate")
     suspend fun notATransaction(id: Long) = setStatus(id, TxnStatus.NOT_A_TRANSACTION, "not_a_transaction")
+    suspend fun ownTransfer(id: Long) = setStatus(id, TxnStatus.INTERNAL_TRANSFER, "own_transfer")
     suspend fun backToReview(id: Long) = setStatus(id, TxnStatus.PENDING, "back_to_review")
 
     private suspend fun setStatus(id: Long, status: TxnStatus, action: String) {
         val t = txnDao.get(id) ?: return
         db.withTransaction {
             log(t, action, null, null)
-            txnDao.update(t.copy(status = status, confirmedAt = null))
+            // Not a real payment (or a copy of one): its location isn't kept. Undo brings it back.
+            val dropLocation = status == TxnStatus.NOT_A_TRANSACTION || status == TxnStatus.DUPLICATE
+            txnDao.update(
+                t.copy(status = status, confirmedAt = null).let {
+                    if (dropLocation) it.copy(locLat = null, locLng = null, locAccuracy = null, locAt = null) else it
+                }
+            )
         }
+    }
+
+    /** Nickname for a merchant (keyed by the bank's name). Blank removes it. */
+    suspend fun setNickname(merchantKey: String, nickname: String) {
+        val name = nickname.trim()
+        if (name.isEmpty() || name == merchantKey) aliasDao.delete(merchantKey)
+        else aliasDao.upsert(app.blue.sms.data.db.MerchantAliasEntity(merchantKey, name, System.currentTimeMillis()))
     }
 
     /** Restores the last actioned card (and memory). Returns its id, or null if there's nothing to undo. */
@@ -110,6 +126,7 @@ class ReviewActions @Inject constructor(
                     status = TxnStatus.valueOf(snap.status),
                     isRefund = snap.isRefund,
                     confirmedAt = snap.confirmedAt,
+                    locLat = snap.locLat, locLng = snap.locLng, locAccuracy = snap.locAccuracy, locAt = snap.locAt,
                 )
             )
         }
@@ -126,6 +143,7 @@ class ReviewActions @Inject constructor(
         val snap = Snapshot(
             t.amountPaise, t.direction?.name, t.merchantRaw, t.upiId, t.accountId, t.method?.name, t.refNo, t.txnAt,
             t.categoryId, t.forWhomId, t.notes, t.status.name, t.isRefund, t.confirmedAt,
+            t.locLat, t.locLng, t.locAccuracy, t.locAt,
             memoryMerchant = merchant,
             memoryBefore = before?.let { MemorySnapshot(it.categoryId, it.forWhomId, it.lastUsedAt, it.useCount) },
         )

@@ -11,7 +11,8 @@ enum class Direction { IN, OUT }
 
 enum class PaymentMethod { UPI, CARD, NETBANKING, AUTO_DEBIT, ATM, OTHER }
 
-enum class TxnStatus { PENDING, CONFIRMED, SKIPPED, DUPLICATE, NOT_A_TRANSACTION }
+/** INTERNAL_TRANSFER: money moved between the user's own accounts. Kept, but never counted as spending or income. */
+enum class TxnStatus { PENDING, CONFIRMED, SKIPPED, DUPLICATE, NOT_A_TRANSACTION, INTERNAL_TRANSFER }
 
 enum class AccountType { SAVINGS, CREDIT_CARD, DEBIT_CARD }
 

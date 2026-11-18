@@ -19,8 +19,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UpcomingItemEntity::class,
         SpamSenderEntity::class,
         ActionLogEntity::class,
+        MerchantAliasEntity::class,
+        PendingLocationEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class BlueDatabase : RoomDatabase() {
@@ -35,6 +37,8 @@ abstract class BlueDatabase : RoomDatabase() {
     abstract fun actionLogDao(): ActionLogDao
     abstract fun upcomingDao(): UpcomingDao
     abstract fun backupDao(): BackupDao
+    abstract fun merchantAliasDao(): MerchantAliasDao
+    abstract fun pendingLocationDao(): PendingLocationDao
 
     companion object {
         const val NAME = "blue.db"
@@ -96,7 +100,20 @@ object Migrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /** v5: payment location on entries, merchant nicknames, locations waiting for their SMS. */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE transactions ADD COLUMN loc_lat REAL")
+            db.execSQL("ALTER TABLE transactions ADD COLUMN loc_lng REAL")
+            db.execSQL("ALTER TABLE transactions ADD COLUMN loc_accuracy REAL")
+            db.execSQL("ALTER TABLE transactions ADD COLUMN loc_at INTEGER")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `merchant_alias` (`merchant_key` TEXT NOT NULL, `nickname` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`merchant_key`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `pending_location` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sender` TEXT NOT NULL, `body_hash` TEXT NOT NULL, `received_at` INTEGER NOT NULL, `lat` REAL NOT NULL, `lng` REAL NOT NULL, `accuracy` REAL, `captured_at` INTEGER NOT NULL)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_pending_location_received_at` ON `pending_location` (`received_at`)")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }
 
 val DEFAULT_CATEGORIES = listOf(

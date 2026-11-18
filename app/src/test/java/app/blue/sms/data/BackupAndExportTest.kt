@@ -40,12 +40,25 @@ class BackupAndExportTest {
     }
 
     @Test fun `sheet has a header and one full row per entry`() {
-        val item = ReviewItem(txn, "Debited…", "AD-FEDBNK-S", false, "Federal Bank", "4321", AccountType.SAVINGS, "Bills & utilities", "Me", null, null, null)
+        val item = ReviewItem(
+            txn.copy(locLat = 12.9716, locLng = 77.5946), "Debited…", "AD-FEDBNK-S", false, "Federal Bank", "4321", AccountType.SAVINGS,
+            "Bills & utilities", "Me", null, null, null, nickname = "Internet bill",
+        )
         val rows = SheetExport.rows(listOf(item), zone)
         assertEquals(2, rows.size)
         assertEquals(SheetExport.HEADER.size, rows[1].size)
-        assertEquals(listOf("2026-11-17", "02:44", 1060.82, "Out", "ATRIA CONVER"), rows[1].take(5))
-        assertEquals("X4321", rows[1][8])
-        assertEquals("Confirmed", rows[1][14])
+        // The nickname has its own column; the bank's name is still exported as it is.
+        assertEquals(listOf("2026-11-17", "02:44", 1060.82, "Out", "Internet bill", "ATRIA CONVER"), rows[1].take(6))
+        assertEquals("X4321", rows[1][9])
+        assertEquals("https://www.google.com/maps/search/?api=1&query=12.971600,77.594600", rows[1][15])
+        assertEquals("Confirmed", rows[1][16])
+    }
+
+    @Test fun `a backup made before nicknames still restores`() {
+        val old = """{"format":1,"dbVersion":4,"createdAt":1,"appVersion":"1.0.0",
+            "settings":{"scanRangeDays":7,"smsSubscriptionIds":[3],"geminiModel":"m"},
+            "sms":[],"scans":[],"transactions":[],"accounts":[],"categories":[],"forWhom":[],
+            "merchantMemory":[],"upcoming":[],"spamSenders":[]}"""
+        assertEquals(emptyList<Any>(), BackupCodec.decode(old.toByteArray()).nicknames)
     }
 }

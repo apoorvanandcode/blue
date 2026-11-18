@@ -99,3 +99,9 @@ object Fmt {
 
     fun plural(n: Int, one: String, many: String) = "$n " + if (n == 1) one else many
 }
+
+/** A link that opens Google Maps (app or web) at a point. */
+fun mapsUrl(lat: Double, lng: Double): String = "https://www.google.com/maps/search/?api=1&query=%.6f,%.6f".format(java.util.Locale.ROOT, lat, lng)
+
+/** Google Maps search for a name, e.g. a shop. Needs no location permission. */
+fun mapsSearchUrl(query: String): String = "https://www.google.com/maps/search/?api=1&query=" + java.net.URLEncoder.encode(query, "UTF-8")

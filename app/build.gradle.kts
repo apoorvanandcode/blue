@@ -18,8 +18,8 @@ android {
         applicationId = "app.blue.sms"
         minSdk = 36 // Android 16+
         targetSdk = 36
-        versionCode = 100
-        versionName = "1.0.0"
+        versionCode = 110
+        versionName = "1.1.0"
     }
 
     // The release key lives outside git (keystore.properties and release/*.jks are ignored).

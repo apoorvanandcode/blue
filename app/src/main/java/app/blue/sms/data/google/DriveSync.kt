@@ -1,5 +1,6 @@
 package app.blue.sms.data.google
 
+import app.blue.sms.ui.common.mapsUrl
 import app.blue.sms.BuildConfig
 import app.blue.sms.data.backup.BackupCodec
 import app.blue.sms.data.backup.BackupFile
@@ -19,8 +20,8 @@ import javax.inject.Inject
 /** One row per entry, every field. Pure, so it's unit-tested. */
 object SheetExport {
     val HEADER = listOf(
-        "Date", "Time", "Amount (₹)", "In/Out", "Merchant", "UPI ID", "Bank", "Account type", "Account",
-        "Method", "Reference", "Category", "For whom", "Notes", "Status", "Refund", "Filled by",
+        "Date", "Time", "Amount (₹)", "In/Out", "Nickname", "Merchant (bank's name)", "UPI ID", "Bank", "Account type", "Account",
+        "Method", "Reference", "Category", "For whom", "Notes", "Location", "Status", "Refund", "Filled by",
         "SMS sender", "SMS text", "Entry id",
     )
 
@@ -32,6 +33,7 @@ object SheetExport {
             at.format(DateTimeFormatter.ofPattern("HH:mm")),
             t.amountPaise?.let { BigDecimal(it).movePointLeft(2).toDouble() },
             when (t.direction) { Direction.IN -> "In"; Direction.OUT -> "Out"; null -> null },
+            i.nickname,
             t.merchantRaw,
             t.upiId,
             i.bank,
@@ -45,9 +47,11 @@ object SheetExport {
             i.categoryName,
             i.forWhomName,
             t.notes,
+            if (t.locLat != null && t.locLng != null) mapsUrl(t.locLat, t.locLng) else null,
             when (t.status) {
                 TxnStatus.PENDING -> "To review"; TxnStatus.CONFIRMED -> "Confirmed"; TxnStatus.SKIPPED -> "Skipped"
                 TxnStatus.DUPLICATE -> "Duplicate"; TxnStatus.NOT_A_TRANSACTION -> "Not a transaction"
+                TxnStatus.INTERNAL_TRANSFER -> "Own transfer"
             },
             t.isRefund,
             t.extractedBy?.name?.lowercase(),

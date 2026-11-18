@@ -73,4 +73,13 @@ class InsightsTest {
         )
         assertEquals(300L, r.byMethod.single().amountPaise)
     }
+
+    @Test fun `own transfers are kept out of totals`() {
+        val r = Insights.compute(
+            listOf(item(100), item(5_000_000, status = app.blue.sms.domain.model.TxnStatus.INTERNAL_TRANSFER)),
+            null, Direction.OUT,
+        )
+        assertEquals(100L, r.totals.outPaise)
+        assertEquals(100L, r.byCategory.sumOf { it.amountPaise })
+    }
 }

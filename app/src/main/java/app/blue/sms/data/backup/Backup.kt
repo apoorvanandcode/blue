@@ -38,9 +38,11 @@ data class BackupFile(
     val merchantMemory: List<MerchantMemoryEntity>,
     val upcoming: List<UpcomingItemEntity>,
     val spamSenders: List<SpamSenderEntity>,
+    /** Merchant nicknames. Missing in backups made before v5. */
+    val nicknames: List<app.blue.sms.data.db.MerchantAliasEntity> = emptyList(),
 ) {
     fun summary() = "${sms.size} SMS, ${transactions.size} entries, ${categories.size} categories, " +
-        "${forWhom.size} \"for whom\", ${merchantMemory.size} remembered merchants, ${upcoming.size} upcoming, ${spamSenders.size} spam senders"
+        "${forWhom.size} \"for whom\", ${merchantMemory.size} remembered merchants, ${upcoming.size} upcoming, ${spamSenders.size} spam senders, ${nicknames.size} nicknames"
 
     companion object { const val FORMAT = 1 }
 }
@@ -66,7 +68,7 @@ class BackupRepository @Inject constructor(
                 settings = BackupSettings(s.scanRangeDays, s.smsSubscriptionIds, s.geminiModel),
                 sms = dao.sms(), scans = dao.scans(), transactions = dao.transactions(), accounts = dao.accounts(),
                 categories = dao.categories(), forWhom = dao.forWhom(), merchantMemory = dao.memory(),
-                upcoming = dao.upcoming(), spamSenders = dao.spamSenders(),
+                upcoming = dao.upcoming(), spamSenders = dao.spamSenders(), nicknames = dao.aliases(),
             )
         }
     }
@@ -77,11 +79,13 @@ class BackupRepository @Inject constructor(
         db.withTransaction {
             dao.clearActionLog(); dao.clearUpcoming(); dao.clearTransactions(); dao.clearMemory(); dao.clearSms()
             dao.clearScans(); dao.clearAccounts(); dao.clearCategories(); dao.clearForWhom(); dao.clearSpamSenders()
+            dao.clearAliases(); dao.clearPendingLocations()
             dao.putScans(b.scans)
             b.sms.chunked(500).forEach { dao.putSms(it) }
             dao.putAccounts(b.accounts); dao.putCategories(b.categories); dao.putForWhom(b.forWhom)
             b.transactions.chunked(500).forEach { dao.putTransactions(it) }
             dao.putMemory(b.merchantMemory); dao.putUpcoming(b.upcoming); dao.putSpamSenders(b.spamSenders)
+            dao.putAliases(b.nicknames)
         }
         settings.setScanRangeDays(b.settings.scanRangeDays)
         if (b.settings.smsSubscriptionIds.isNotEmpty()) settings.setSmsSubscriptionIds(b.settings.smsSubscriptionIds)

@@ -114,6 +114,14 @@ class ReviewViewModel @Inject constructor(
     fun skip(ui: ReviewUiItem) = act("Skipped") { actions.skip(ui.id) }
     fun duplicate(ui: ReviewUiItem) = act("Marked as duplicate") { actions.markDuplicate(ui.id) }
     fun notTransaction(ui: ReviewUiItem) = act("Marked as not a transaction") { actions.notATransaction(ui.id) }
+    fun ownTransfer(ui: ReviewUiItem) = act("Marked as own transfer") { actions.ownTransfer(ui.id) }
+
+    /** Saves (or with a blank name, removes) the nickname for this card's merchant. */
+    fun setNickname(ui: ReviewUiItem, nickname: String) = viewModelScope.launch {
+        val key = merchantKey(ui.item) ?: return@launch
+        actions.setNickname(key, nickname)
+        _events.send(ReviewEvent.Message(if (nickname.isBlank()) "Nickname removed" else "Now shown as $nickname", undoable = false))
+    }
 
     fun undo() = viewModelScope.launch {
         val id = actions.undo()

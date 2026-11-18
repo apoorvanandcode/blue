@@ -94,6 +94,40 @@ data class TransactionEntity(
     @ColumnInfo(name = "is_refund") val isRefund: Boolean = false,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "confirmed_at") val confirmedAt: Long? = null,
+    /** Where the phone was when the payment SMS arrived. Only kept for real payments. */
+    @ColumnInfo(name = "loc_lat") val locLat: Double? = null,
+    @ColumnInfo(name = "loc_lng") val locLng: Double? = null,
+    /** Accuracy radius in metres. */
+    @ColumnInfo(name = "loc_accuracy") val locAccuracy: Float? = null,
+    @ColumnInfo(name = "loc_at") val locAt: Long? = null,
+)
+
+/**
+ * The user's own name for a merchant. Keyed by the bank's name (or UPI id when there's no name);
+ * the bank's name itself is never changed.
+ */
+@Serializable
+@Entity(tableName = "merchant_alias")
+data class MerchantAliasEntity(
+    @PrimaryKey @ColumnInfo(name = "merchant_key") val merchantKey: String,
+    val nickname: String,
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+)
+
+/**
+ * A location caught when a payment-looking SMS arrived, waiting for the next scan to attach it to
+ * that SMS's entry. Matched by sender and a hash of the text; unmatched rows are deleted after 3 days.
+ */
+@Entity(tableName = "pending_location", indices = [Index("received_at")])
+data class PendingLocationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sender: String,
+    @ColumnInfo(name = "body_hash") val bodyHash: String,
+    @ColumnInfo(name = "received_at") val receivedAt: Long,
+    val lat: Double,
+    val lng: Double,
+    val accuracy: Float?,
+    @ColumnInfo(name = "captured_at") val capturedAt: Long,
 )
 
 @Serializable

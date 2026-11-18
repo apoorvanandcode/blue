@@ -149,20 +149,24 @@ data class ReviewItem(
     @ColumnInfo(name = "mc_active") val memoryCategoryActive: Boolean?,
     /** Last Gemini error for this card's SMS, shown with a Retry. */
     @ColumnInfo(name = "s_ai_error") val aiError: String? = null,
+    /** The user's nickname for this merchant, shown instead of the bank's name. */
+    @ColumnInfo(name = "n_nickname") val nickname: String? = null,
 )
 
 private const val REVIEW_SELECT = """
     SELECT t.*, s.body AS s_body, s.sender AS s_sender, s.is_starred AS s_starred, s.ai_error AS s_ai_error,
            a.bank AS a_bank, a.last4 AS a_last4, a.type AS a_type,
            c.name AS c_name, f.name AS f_name,
-           m.category_id AS m_category_id, m.for_whom_id AS m_for_whom_id, mc.is_active AS mc_active
+           m.category_id AS m_category_id, m.for_whom_id AS m_for_whom_id, mc.is_active AS mc_active,
+           n.nickname AS n_nickname
     FROM transactions t
     LEFT JOIN sms_message s ON s.id = t.sms_id
     LEFT JOIN account a ON a.id = t.account_id
     LEFT JOIN category c ON c.id = t.category_id
     LEFT JOIN for_whom f ON f.id = t.for_whom_id
     LEFT JOIN merchant_memory m ON m.merchant_raw = t.merchant_raw
-    LEFT JOIN category mc ON mc.id = m.category_id"""
+    LEFT JOIN category mc ON mc.id = m.category_id
+    LEFT JOIN merchant_alias n ON n.merchant_key = COALESCE(t.merchant_raw, t.upi_id)"""
 
 @Dao
 interface TransactionDao {
@@ -222,14 +226,14 @@ interface TransactionDao {
     @Query(
         """SELECT COALESCE(SUM(amount_paise), 0) FROM transactions
            WHERE direction = 'OUT' AND txn_at >= :from
-           AND status NOT IN ('DUPLICATE', 'NOT_A_TRANSACTION')"""
+           AND status NOT IN ('DUPLICATE', 'NOT_A_TRANSACTION', 'INTERNAL_TRANSFER')"""
     )
     fun observeSpendSince(from: Long): Flow<Long>
 
     @Query(
         """SELECT COALESCE(SUM(amount_paise), 0) FROM transactions
            WHERE direction = 'OUT' AND txn_at >= :from AND txn_at < :to
-           AND status NOT IN ('DUPLICATE', 'NOT_A_TRANSACTION')"""
+           AND status NOT IN ('DUPLICATE', 'NOT_A_TRANSACTION', 'INTERNAL_TRANSFER')"""
     )
     fun observeSpendBetween(from: Long, to: Long): Flow<Long>
 
@@ -398,6 +402,10 @@ interface BackupDao {
     @Query("SELECT * FROM merchant_memory") suspend fun memory(): List<MerchantMemoryEntity>
     @Query("SELECT * FROM upcoming_item") suspend fun upcoming(): List<UpcomingItemEntity>
     @Query("SELECT * FROM spam_sender") suspend fun spamSenders(): List<SpamSenderEntity>
+    @Query("SELECT * FROM merchant_alias") suspend fun aliases(): List<MerchantAliasEntity>
+    @Query("DELETE FROM merchant_alias") suspend fun clearAliases()
+    @Query("DELETE FROM pending_location") suspend fun clearPendingLocations()
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putAliases(rows: List<MerchantAliasEntity>)
 
     @Query("DELETE FROM sms_message") suspend fun clearSms()
     @Query("DELETE FROM scan") suspend fun clearScans()
@@ -423,4 +431,35 @@ interface BackupDao {
     /** Every entry with names, for the Sheets export. */
     @Query("$REVIEW_SELECT ORDER BY COALESCE(t.txn_at, t.created_at) DESC, t.id DESC")
     suspend fun allEntries(): List<ReviewItem>
+}
+
+@Dao
+interface MerchantAliasDao {
+    @Query("SELECT nickname FROM merchant_alias WHERE merchant_key = :key")
+    suspend fun nickname(key: String): String?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(alias: MerchantAliasEntity)
+
+    @Query("DELETE FROM merchant_alias WHERE merchant_key = :key")
+    suspend fun delete(key: String)
+}
+
+@Dao
+interface PendingLocationDao {
+    @Insert
+    suspend fun insert(row: PendingLocationEntity): Long
+
+    /** The location caught for this exact SMS: same sender and text, arrival within [from, to]. */
+    @Query(
+        """SELECT * FROM pending_location WHERE sender = :sender AND body_hash = :bodyHash
+           AND received_at BETWEEN :from AND :to ORDER BY ABS(received_at - :at) LIMIT 1"""
+    )
+    suspend fun match(sender: String, bodyHash: String, at: Long, from: Long, to: Long): PendingLocationEntity?
+
+    @Query("DELETE FROM pending_location WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM pending_location WHERE captured_at < :before")
+    suspend fun deleteOlderThan(before: Long)
 }

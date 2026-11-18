@@ -23,6 +23,8 @@ data class AppSettings(
     val dailyScan: Boolean = true,
     /** Time of day for the automatic scan, in minutes after midnight. Default 8:00 PM. */
     val dailyScanMinutes: Int = DEFAULT_DAILY_SCAN_MINUTES,
+    /** Save where the phone is when a payment SMS arrives. Off until the user turns it on. */
+    val saveLocation: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_SCAN_DAYS = 7
@@ -44,6 +46,7 @@ class SettingsRepository @Inject constructor(
     private val modelKey = stringPreferencesKey("gemini_model")
     private val dailyKey = booleanPreferencesKey("daily_scan")
     private val dailyTimeKey = intPreferencesKey("daily_scan_minutes")
+    private val locationKey = booleanPreferencesKey("save_location")
 
     val settings: Flow<AppSettings> = context.blueSettings.data.map { p ->
         AppSettings(
@@ -54,11 +57,16 @@ class SettingsRepository @Inject constructor(
             geminiModel = p[modelKey]?.takeIf { it.isNotBlank() } ?: AppSettings.DEFAULT_GEMINI_MODEL,
             dailyScan = p[dailyKey] ?: true,
             dailyScanMinutes = p[dailyTimeKey] ?: AppSettings.DEFAULT_DAILY_SCAN_MINUTES,
+            saveLocation = p[locationKey] ?: false,
         )
     }
 
     suspend fun setDailyScanMinutes(minutes: Int) {
         context.blueSettings.edit { it[dailyTimeKey] = minutes.coerceIn(0, 24 * 60 - 1) }
+    }
+
+    suspend fun setSaveLocation(on: Boolean) {
+        context.blueSettings.edit { it[locationKey] = on }
     }
 
     suspend fun setDailyScan(on: Boolean) {

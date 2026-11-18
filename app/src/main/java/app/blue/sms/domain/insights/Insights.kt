@@ -7,7 +7,8 @@ import app.blue.sms.domain.model.PaymentMethod
 import app.blue.sms.domain.model.TxnStatus
 
 /** Totals include pending and skipped entries. Duplicates and "not a transaction" never count. */
-fun TxnStatus.countsInTotals() = this != TxnStatus.DUPLICATE && this != TxnStatus.NOT_A_TRANSACTION
+/** Duplicates, non-transactions and transfers between the user's own accounts are kept out of every total. */
+fun TxnStatus.countsInTotals() = this != TxnStatus.DUPLICATE && this != TxnStatus.NOT_A_TRANSACTION && this != TxnStatus.INTERNAL_TRANSFER
 
 data class Totals(val inPaise: Long = 0, val outPaise: Long = 0, val inCount: Int = 0, val outCount: Int = 0) {
     val net get() = inPaise - outPaise
@@ -83,7 +84,8 @@ object Insights {
 
     private fun List<ReviewItem>.counted() = filter { it.txn.status.countsInTotals() }
 
-    private fun merchant(i: ReviewItem) = i.txn.merchantRaw ?: i.txn.upiId ?: "Unknown"
+    /** The nickname when there is one, so a renamed merchant groups and reads the same everywhere. */
+    private fun merchant(i: ReviewItem) = i.nickname ?: i.txn.merchantRaw ?: i.txn.upiId ?: "Unknown"
 
     /** One row per account or card: the same card counts once even if SMS spell the bank differently. */
     private fun accountKey(i: ReviewItem) = when {

@@ -184,4 +184,5 @@ private fun statusLabel(s: TxnStatus) = when (s) {
     TxnStatus.SKIPPED -> "skipped"
     TxnStatus.DUPLICATE -> "duplicate"
     TxnStatus.NOT_A_TRANSACTION -> "not a payment"
+    TxnStatus.INTERNAL_TRANSFER -> "own transfer"
 }

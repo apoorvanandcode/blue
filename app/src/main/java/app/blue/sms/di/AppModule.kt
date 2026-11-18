@@ -33,6 +33,8 @@ object DatabaseModule {
     @Provides fun actionLogDao(db: BlueDatabase) = db.actionLogDao()
     @Provides fun upcomingDao(db: BlueDatabase) = db.upcomingDao()
     @Provides fun backupDao(db: BlueDatabase) = db.backupDao()
+    @Provides fun merchantAliasDao(db: BlueDatabase) = db.merchantAliasDao()
+    @Provides fun pendingLocationDao(db: BlueDatabase) = db.pendingLocationDao()
 }
 
 @Module

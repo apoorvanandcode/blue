@@ -22,6 +22,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -112,13 +115,17 @@ fun BlueNavHost() {
     // Review is the start screen and stays at the bottom of the back stack, so popping to it
     // works from any tab. An open edit is left alone so typed changes aren't lost.
     var leftAt by rememberSaveable { mutableLongStateOf(0L) }
+    var backToReview by remember { mutableStateOf(false) }
     LifecycleStartEffect(Unit) {
-        if (leftAt != 0L && System.currentTimeMillis() - leftAt >= BACK_TO_REVIEW_AFTER_MS &&
-            nav.currentDestination?.hasRoute(EditTxnRoute::class) != true
-        ) {
-            nav.popBackStack<ReviewRoute>(inclusive = false)
-        }
+        if (leftAt != 0L && System.currentTimeMillis() - leftAt >= BACK_TO_REVIEW_AFTER_MS) backToReview = true
         onStopOrDispose { leftAt = System.currentTimeMillis() }
+    }
+    // Done once the screens exist: after Android restarts Blue, the start event comes before the nav graph is set.
+    LaunchedEffect(backToReview, entry) {
+        if (backToReview && entry != null) {
+            backToReview = false
+            if (dest?.hasRoute(EditTxnRoute::class) != true) runCatching { nav.popBackStack<ReviewRoute>(inclusive = false) }
+        }
     }
 
     Scaffold(

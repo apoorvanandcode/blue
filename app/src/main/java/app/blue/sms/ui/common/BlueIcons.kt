@@ -39,6 +39,7 @@ object BlueIcons {
     val ChevronRight = icon("chevron_right", "m9 6 6 6-6 6")
     val ChevronLeft = icon("chevron_left", "m15 6-6 6 6 6")
     val ChevronDown = icon("chevron_down", "m6 9 6 6 6-6")
+    val ChevronUp = icon("chevron_up", "m6 15 6-6 6 6")
     val Check = icon("check", "m5 12 5 5 9-10")
     val Star = icon("star", "m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z")
     val StarFilled = icon("star_filled", "m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z", filled = true)

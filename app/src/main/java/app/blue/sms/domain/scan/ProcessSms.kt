@@ -60,8 +60,11 @@ class ProcessSms @Inject constructor(
     private val upcomingDao: UpcomingDao,
     private val categoryDao: CategoryDao,
     private val secrets: SecretStore,
+    private val pendingLocations: app.blue.sms.data.db.PendingLocationDao,
 ) {
     suspend operator fun invoke(): ProcessCounts {
+        // Locations whose SMS never turned up (or was never a payment) are not kept.
+        pendingLocations.deleteOlderThan(System.currentTimeMillis() - 3 * 24 * 60 * 60 * 1000L)
         val spam = spamSenderDao.allSenders().toSet()
         val accounts = HashMap<Triple<String, AccountType, String>, Long>()
         var c = ProcessCounts()
@@ -84,12 +87,19 @@ class ProcessSms @Inject constructor(
         accounts: HashMap<Triple<String, AccountType, String>, Long>,
     ): ProcessCounts {
         smsDao.setClassification(sms.id, p.smsClass, p.smsClass?.let { by }, p.ruleId)
+        // A location caught when this SMS arrived goes onto its card; any other class drops it.
+        // Undecided SMS keep theirs until Gemini decides.
+        val location = if (p.smsClass != null) takeLocation(sms) else null
         return when (p.smsClass) {
             SmsClass.TRANSACTION -> {
                 if (txnDao.countForSms(sms.id) == 0) {
                     // Rule-made cards are refilled by Gemini when a key is set (offline: later, by the queue).
                     val card = p.toCard(sms.id, sms.receivedAt, accountId(p, accounts), by)
-                        .copy(aiPending = by == ProcessedBy.RULES && secrets.hasGeminiKey.value)
+                        .copy(
+                            aiPending = by == ProcessedBy.RULES && secrets.hasGeminiKey.value,
+                            locLat = location?.lat, locLng = location?.lng,
+                            locAccuracy = location?.accuracy, locAt = location?.capturedAt,
+                        )
                     val txnId = txnDao.insert(card)
                     val closed = if (card.direction == Direction.OUT) closeMoneyItem(card.copy(id = txnId), sms.id) else false
                     ProcessCounts(newCards = 1, closed = if (closed) 1 else 0)
@@ -101,6 +111,15 @@ class ProcessSms @Inject constructor(
             SmsClass.IGNORE -> ProcessCounts(ignored = 1)
             null -> ProcessCounts(undecided = 1)
         }
+    }
+
+    private suspend fun takeLocation(sms: SmsMessageEntity): app.blue.sms.data.db.PendingLocationEntity? {
+        val w = app.blue.sms.domain.sms.SmsFingerprint.WINDOW_MS
+        val hit = pendingLocations.match(
+            sms.sender, app.blue.sms.domain.sms.SmsFingerprint.bodyHash(sms.body), sms.receivedAt, sms.receivedAt - w, sms.receivedAt + w,
+        ) ?: return null
+        pendingLocations.delete(hit.id)
+        return hit
     }
 
     /** Applies Gemini's answer for an SMS the rules couldn't decide. */

@@ -187,6 +187,13 @@ class EditTxnViewModel @Inject constructor(
     fun skip() = finish { saveForm(); actions.skip(id) }
     fun duplicate() = finish { saveForm(); actions.markDuplicate(id) }
     fun notTransaction() = finish { saveForm(); actions.notATransaction(id) }
+    fun ownTransfer() = finish { saveForm(); actions.ownTransfer(id) }
+
+    /** Nickname for this entry's merchant; the bank's name stays as it is. */
+    fun setNickname(nickname: String) = viewModelScope.launch {
+        val key = state.value.item?.let { app.blue.sms.ui.review.merchantKey(it) } ?: return@launch
+        actions.setNickname(key, nickname)
+    }
     fun backToReview() = finish { saveForm(); actions.backToReview(id) }
 
     val status: TxnStatus? get() = state.value.item?.txn?.status

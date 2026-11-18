@@ -2,6 +2,21 @@ package app.blue.sms.ui.review
 
 import app.blue.sms.ui.common.BlueIcons
 
+import android.content.Intent
+import android.location.Geocoder
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextDecoration
+import app.blue.sms.ui.common.mapsUrl
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,7 +72,11 @@ fun accountLabel(item: ReviewItem): String? = listOfNotNull(
     item.last4?.let { "••$it" },
 ).joinToString(" ").ifEmpty { null }
 
-fun merchantText(item: ReviewItem): String = item.txn.merchantRaw ?: item.txn.upiId ?: "Unknown merchant"
+/** The user's nickname if set, else the bank's name. */
+fun merchantText(item: ReviewItem): String = item.nickname ?: item.txn.merchantRaw ?: item.txn.upiId ?: "Unknown merchant"
+
+/** What nicknames are keyed by: the bank's name, or the UPI id when there's no name. Never changed by Blue. */
+fun merchantKey(item: ReviewItem): String? = item.txn.merchantRaw?.takeIf { it.isNotBlank() } ?: item.txn.upiId?.takeIf { it.isNotBlank() }
 
 @Composable
 fun amountColor(item: ReviewItem): Color = when {
@@ -66,11 +85,21 @@ fun amountColor(item: ReviewItem): Color = when {
     else -> MaterialTheme.colorScheme.onSurface
 }
 
-/** The big Review card: date, amount, merchant, account, then category and "for whom", then the SMS. */
+/**
+ * The big Review card: date, amount, merchant, then category and "for whom". Payment method, account,
+ * the bank's own merchant name, location and the SMS sit under a "Details" row that opens and closes.
+ */
 @Composable
-fun ReviewCardBody(ui: ReviewUiItem, full: Boolean, onStar: (() -> Unit)?) {
+fun ReviewCardBody(
+    ui: ReviewUiItem,
+    full: Boolean,
+    onStar: (() -> Unit)?,
+    expanded: Boolean = false,
+    onToggleDetails: (() -> Unit)? = null,
+    onNickname: (() -> Unit)? = null,
+) {
     val t = ui.item.txn
-    Column(Modifier.padding(start = 20.dp, end = 8.dp, top = if (onStar == null) 22.dp else 12.dp, bottom = 22.dp)) {
+    Column(Modifier.padding(start = 20.dp, end = 8.dp, top = if (onStar == null) 22.dp else 12.dp, bottom = if (onToggleDetails != null) 8.dp else 22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 listOfNotNull(t.txnAt?.let(Fmt::dateTime), if (t.isRefund) "Refund" else null).joinToString(" · "),
@@ -102,31 +131,129 @@ fun ReviewCardBody(ui: ReviewUiItem, full: Boolean, onStar: (() -> Unit)?) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 6.dp),
             )
-            val line = listOfNotNull(t.method?.let(Fmt::method), accountLabel(ui.item)).joinToString(" · ")
-            if (line.isNotEmpty()) {
-                Text(line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 14.dp))
             SuggestionLine("Category", ui.categoryName, ui.suggestion.categoryFromMemory)
             SuggestionLine("For", ui.forWhomName, ui.suggestion.forWhomFromMemory)
-            if (full && ui.item.smsBody != null) {
-                Text(
-                    "“${ui.item.smsBody}”",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 14.dp),
-                )
+
+            if (onToggleDetails == null) {
+                // No toggle (e.g. the card peeking underneath): show nothing more.
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onToggleDetails).padding(top = 10.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Details", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Icon(
+                        if (expanded) BlueIcons.ChevronUp else BlueIcons.ChevronDown,
+                        if (expanded) "Hide details" else "Show details",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                AnimatedVisibility(expanded) {
+                    Column(Modifier.padding(bottom = 12.dp)) {
+                        val line = listOfNotNull(t.method?.let(Fmt::method), accountLabel(ui.item)).joinToString(" · ")
+                        if (line.isNotEmpty()) DetailLine("Paid by", line)
+                        val key = merchantKey(ui.item)
+                        if (key != null) {
+                            DetailLine("Bank's name", key)
+                            if (onNickname != null) {
+                                Text(
+                                    if (ui.item.nickname == null) "Add a nickname" else "Change nickname",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    textDecoration = TextDecoration.Underline,
+                                    modifier = Modifier.padding(start = 104.dp, bottom = 4.dp).clickable(onClick = onNickname).padding(vertical = 4.dp),
+                                )
+                            }
+                        }
+                        if (t.locLat != null && t.locLng != null) PlaceLine(t.locLat, t.locLng, t.locAccuracy)
+                        else if (key != null) FindOnMapLine(merchantText(ui.item))
+                        if (ui.item.smsBody != null) {
+                            Text(
+                                "“${ui.item.smsBody}”",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
+private fun DetailLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(104.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+    }
+}
+
+/** "Indiranagar, Bengaluru · View on map". The area name comes from Android's geocoder, the map is Google Maps. */
+@Composable
+fun PlaceLine(lat: Double, lng: Double, accuracy: Float?) {
+    val context = LocalContext.current
+    val place by produceState<String?>(null, lat, lng) { value = placeName(context, lat, lng) }
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Where", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(104.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                place ?: "%.4f, %.4f".format(java.util.Locale.ROOT, lat, lng),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                "View on map" + (accuracy?.let { " · within ${it.roundToInt()} m" } ?: ""),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable {
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mapsUrl(lat, lng)))) }
+                }.padding(vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** No saved location: search the merchant's name on Google Maps instead. */
+@Composable
+private fun FindOnMapLine(name: String) {
+    val context = LocalContext.current
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Where", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(104.dp))
+        Text(
+            "Find on Google Maps",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            textDecoration = TextDecoration.Underline,
+            modifier = Modifier.clickable {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(app.blue.sms.ui.common.mapsSearchUrl(name)))) }
+            }.padding(vertical = 4.dp),
+        )
+    }
+}
+
+private suspend fun placeName(context: android.content.Context, lat: Double, lng: Double): String? =
+    if (!Geocoder.isPresent()) null else withTimeoutOrNull(5_000) {
+        suspendCancellableCoroutine { cont ->
+            runCatching {
+                Geocoder(context).getFromLocation(lat, lng, 1, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<android.location.Address>) {
+                        val a = addresses.firstOrNull()
+                        cont.resume(a?.let { listOfNotNull(it.featureName?.takeIf { f -> f != it.subThoroughfare && !f.all(Char::isDigit) }, it.subLocality, it.locality).distinct().take(2).joinToString(", ").ifEmpty { null } })
+                    }
+                    override fun onError(errorMessage: String?) { cont.resume(null) }
+                })
+            }.onFailure { cont.resume(null) }
+        }
+    }
+
+@Composable
 private fun SuggestionLine(label: String, value: String?, remembered: Boolean) {
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.Start) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(90.dp))
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(104.dp))
         Text(
             value ?: "Choose",
             style = MaterialTheme.typography.bodyMedium,

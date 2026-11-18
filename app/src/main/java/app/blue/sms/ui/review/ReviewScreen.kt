@@ -41,6 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -147,24 +150,67 @@ private fun CardsView(state: ReviewState, vm: ReviewViewModel, onOpenEdit: (Long
     val ui = state.items.first()
     val hasKey by vm.hasAiKey.collectAsStateWithLifecycle()
     val busy by vm.aiBusy.collectAsStateWithLifecycle()
+    // Details stay open or closed from card to card until changed.
+    var detailsOpen by rememberSaveable { mutableStateOf(false) }
+    var nicknameFor by remember { mutableStateOf<ReviewUiItem?>(null) }
     // A soft grey page so the white card stands up off it.
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        SwipeCard(ui, next = state.items.getOrNull(1), onConfirm = { vm.confirm(ui) }, onSkip = { vm.skip(ui) }, onOpen = { onOpenEdit(ui.id) })
+        SwipeCard(
+            ui, next = state.items.getOrNull(1),
+            onConfirm = { vm.confirm(ui) }, onSkip = { vm.skip(ui) }, onOpen = { onOpenEdit(ui.id) },
+            detailsOpen = detailsOpen, onToggleDetails = { detailsOpen = !detailsOpen },
+            onNickname = { nicknameFor = ui },
+        )
         Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton("Skip", onClick = { vm.skip(ui) }, modifier = Modifier.weight(1f))
             PrimaryButton("Confirm", onClick = { vm.confirm(ui) }, modifier = Modifier.weight(1f))
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            QuietLink("Duplicate") { vm.duplicate(ui) }
-            QuietLink("Not a transaction") { vm.notTransaction(ui) }
-            QuietLink("Ask Gemini", enabled = hasKey && ui.id !in busy) { vm.processWithAi(ui) }
+        Column(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                QuietLink("Own transfer") { vm.ownTransfer(ui) }
+                QuietLink("Duplicate") { vm.duplicate(ui) }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                QuietLink("Not a transaction") { vm.notTransaction(ui) }
+                QuietLink("Ask Gemini", enabled = hasKey && ui.id !in busy) { vm.processWithAi(ui) }
+            }
         }
         AiStatusLine(ui, busy = ui.id in busy)
     }
+    nicknameFor?.let { target ->
+        NicknameDialog(
+            bankName = merchantKey(target.item) ?: "",
+            current = target.item.nickname,
+            onDismiss = { nicknameFor = null },
+            onSave = { vm.setNickname(target, it); nicknameFor = null },
+        )
+    }
+}
+
+/** One nickname per bank merchant name. Blank removes it. The bank's name is kept as it is. */
+@Composable
+fun NicknameDialog(bankName: String, current: String?, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(current ?: "") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nickname") },
+        text = {
+            Column {
+                Text("The bank calls it \"$bankName\". Your nickname shows instead everywhere in Blue.", style = MaterialTheme.typography.bodyMedium)
+                androidx.compose.material3.OutlinedTextField(
+                    value = text, onValueChange = { text = it.take(60) },
+                    singleLine = true, placeholder = { Text("e.g. Corner chai shop") },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(text.trim()) }) { Text(if (text.isBlank() && current != null) "Remove" else "Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -196,7 +242,10 @@ private fun Modifier.cardFace(shape: RoundedCornerShape, elevation: androidx.com
 }
 
 @Composable
-private fun SwipeCard(ui: ReviewUiItem, next: ReviewUiItem?, onConfirm: () -> Unit, onSkip: () -> Unit, onOpen: () -> Unit) {
+private fun SwipeCard(
+    ui: ReviewUiItem, next: ReviewUiItem?, onConfirm: () -> Unit, onSkip: () -> Unit, onOpen: () -> Unit,
+    detailsOpen: Boolean, onToggleDetails: () -> Unit, onNickname: () -> Unit,
+) {
     val offset = remember(ui.id) { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -248,7 +297,7 @@ private fun SwipeCard(ui: ReviewUiItem, next: ReviewUiItem?, onConfirm: () -> Un
                 }
                 .clickable(onClick = onOpen),
         ) {
-            ReviewCardBody(ui, full = true, onStar = null)
+            ReviewCardBody(ui, full = true, onStar = null, expanded = detailsOpen, onToggleDetails = onToggleDetails, onNickname = onNickname)
             val right = offset.value > 0
             val tint = if (right) ConfirmGreen else SkipOrange
             // Green for confirm, orange for skip, growing as the card moves.

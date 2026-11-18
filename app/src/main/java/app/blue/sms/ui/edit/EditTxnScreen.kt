@@ -200,7 +200,7 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
                 }
             }
             Text(
-                listOfNotNull(f.merchant.ifBlank { null }, f.txnAt?.let(Fmt::dateTime)).joinToString(" · "),
+                listOfNotNull(state.item?.nickname ?: f.merchant.ifBlank { null }, f.txnAt?.let(Fmt::dateTime)).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 10.dp),
@@ -242,6 +242,9 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
             // Details: plain rows, tap a line to change it.
             Section("Details")
             DetailRow("Merchant", f.merchant.ifBlank { "—" }) { dialog = "merchant" }
+            state.item?.let { app.blue.sms.ui.review.merchantKey(it) }?.let {
+                DetailRow("Nickname", state.item?.nickname ?: "Add") { dialog = "nickname" }
+            }
             Box {
                 DetailRow("Paid from", state.accounts.firstOrNull { it.id == f.accountId }?.let(::accountName) ?: "—") { accountMenu = true }
                 DropdownMenu(expanded = accountMenu, onDismissRequest = { accountMenu = false }) {
@@ -260,6 +263,9 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
             DetailRow("UPI ID", f.upiId.ifBlank { "—" }) { dialog = "upi" }
             DetailRow("Reference", f.refNo.ifBlank { "—" }) { dialog = "ref" }
             DetailRow("Refund", if (f.isRefund) "Yes" else "No") { vm.edit { copy(isRefund = !isRefund) } }
+            state.item?.txn?.let { t ->
+                if (t.locLat != null && t.locLng != null) app.blue.sms.ui.review.PlaceLine(t.locLat, t.locLng, t.locAccuracy)
+            }
             Text("Tap any line to change it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
 
             state.item?.smsBody?.let { body ->
@@ -290,6 +296,7 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
                     LinkRow(if (status == TxnStatus.CONFIRMED) "Un-confirm (back to Review)" else "Back to Review", onClick = vm::backToReview)
                 }
                 if (status != TxnStatus.SKIPPED) LinkRow("Skip for now", onClick = vm::skip)
+                if (status != TxnStatus.INTERNAL_TRANSFER) LinkRow("Own transfer (between my accounts)", onClick = vm::ownTransfer)
                 LinkRow("Mark as duplicate", onClick = vm::duplicate)
                 LinkRow("Not a transaction", onClick = vm::notTransaction)
                 LinkRow(if (hasKey) "Ask Gemini to re-read" else "Ask Gemini (add a key in Settings)", enabled = hasKey && !busy, onClick = vm::processWithAi)
@@ -306,6 +313,12 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
     }
 
     when (dialog) {
+        "nickname" -> app.blue.sms.ui.review.NicknameDialog(
+            bankName = state.item?.let { app.blue.sms.ui.review.merchantKey(it) } ?: "",
+            current = state.item?.nickname,
+            onDismiss = { dialog = null },
+            onSave = { vm.setNickname(it); dialog = null },
+        )
         "merchant" -> NameDialog("Merchant", initial = f.merchant, onDismiss = { dialog = null }) { vm.edit { copy(merchant = it) }; dialog = null }
         "upi" -> NameDialog("UPI ID", initial = f.upiId, onDismiss = { dialog = null }) { vm.edit { copy(upiId = it) }; dialog = null }
         "ref" -> NameDialog("Reference no.", initial = f.refNo, onDismiss = { dialog = null }) { vm.edit { copy(refNo = it) }; dialog = null }
