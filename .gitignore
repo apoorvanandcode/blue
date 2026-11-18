@@ -1,0 +1,19 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+# Never commit keys or signing material
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+release/
+dist/
+
+# Personal data: real (masked) SMS collected for development. Never publish.
+app/src/test/resources/sms-samples/
+# Phase 8 throwaway test app
+readtest/

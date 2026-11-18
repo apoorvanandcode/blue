@@ -1,0 +1,162 @@
+=== UPI debit (sample from the build prompt)
+sender: AD-FEDBNK-S
+received: 2026-11-17 02:44
+body:
+Debited Rs 1060.82 from a/c X4321 on 17Nov26 02:44 via UPI to ATRIA CONVER. Ref 110928159013.Bal Rs 851.02. Not you?Call 72459571177 -Federal Bank
+expect:
+class: TRANSACTION
+rule: federal.upi_debit
+bank: Federal Bank
+amount: 1060.82
+direction: OUT
+account: X4321
+account_type: SAVINGS
+method: UPI
+merchant: ATRIA CONVER
+ref: 110928159013
+at: 2026-11-17 02:44
+
+=== UPI debit to a person
+sender: AX-FEDBNK-S
+received: 2026-11-17 19:13
+body:
+Debited Rs 60.00 from a/c X1234 on 17Nov26 19:11 via UPI to Lakshmi Tiffins. Ref 874121547280.Bal Rs 626.01. Not you?Call 48528084148 -Federal Bank
+expect:
+class: TRANSACTION
+rule: federal.upi_debit
+amount: 60.00
+direction: OUT
+account: X1234
+merchant: Lakshmi Tiffins
+ref: 874121547280
+at: 2026-11-17 19:11
+
+=== UPI debit, short merchant
+sender: AD-FEDBNK-S
+received: 2026-11-15 16:12
+body:
+Debited Rs 225.00 from a/c X1234 on 15Nov26 16:12 via UPI to CHULHA. Ref 625388853933.Bal Rs 1751.16. Not you?Call 73387500474 -Federal Bank
+expect:
+class: TRANSACTION
+amount: 225.00
+merchant: CHULHA
+at: 2026-11-15 16:12
+
+=== Mandate executed
+sender: AX-FEDBNK-S
+received: 2026-10-02 14:26
+body:
+Dear Customer, Your mandate with ref no- xxxx@jupiteraxis registered against APPLE MEDIA SER for Rs 389.00 successfully executed on 02-10-2026 14:26:11. TXN Ref No -495755131373- Federal Bank
+expect:
+class: TRANSACTION
+rule: federal.mandate_executed
+amount: 389.00
+direction: OUT
+method: AUTO_DEBIT
+merchant: APPLE MEDIA SER
+upi: xxxx@jupiteraxis
+ref: 495755131373
+at: 2026-10-02 14:26
+
+=== UPI mandate debit (newer format)
+sender: AD-FEDBNK-T
+received: 2026-11-02 15:25
+body:
+Debited Rs 389.00 from a/c X1234 for UPI mandate towards APPLE MEDIA  on 02-11-2026 15:25:51. Ref: 637990751163. Not you? Call 82651676122 - Federal Bank
+expect:
+class: TRANSACTION
+rule: federal.upi_mandate_debit
+amount: 389.00
+method: AUTO_DEBIT
+merchant: APPLE MEDIA
+ref: 637990751163
+at: 2026-11-02 15:25
+
+=== Mandate created -> upcoming
+sender: AD-FEDBNK-S
+received: 2026-09-13 14:46
+body:
+Dear Customer, You have successfully created a mandate on Amazon India for a ASPRESENTED frequency starting from 13-09-2026 for a maximum amount of Rs 399.00 Mandate Ref No- xxxx@oksbi - Federal Bank
+expect:
+class: UPCOMING_FINANCE
+rule: federal.mandate_created
+kind: MANDATE
+amount: 399.00
+merchant: Amazon India
+upi: xxxx@oksbi
+due: 2026-09-13 14:46
+
+=== Sent via UPI (older format)
+sender: AD-FEDBNK-S
+received: 2026-06-18 01:08
+body:
+Rs 173.00 sent via UPI on 18-06-2026 at 01:08:50 to Chai Point.Ref:302972997528.Not you? Call 92001826330/SMS BLOCKUPI to 33667 22768 -Federal Bank
+expect:
+class: TRANSACTION
+rule: federal.upi_sent
+amount: 173.00
+direction: OUT
+method: UPI
+merchant: Chai Point
+ref: 302972997528
+at: 2026-06-18 01:08
+
+=== Sent via UPI, space before the dot
+sender: AD-FEDBNK-S
+received: 2026-06-17 23:37
+body:
+Rs 1200.00 sent via UPI on 17-06-2026 at 23:37:25 to Royal Valtrans .Ref:534839548620.Not you? Call 67986828288/SMS BLOCKUPI to 62808 51485 -Federal Bank
+expect:
+merchant: Royal Valtrans
+amount: 1200.00
+at: 2026-06-17 23:37
+
+=== Sent via UPI, time differs from received
+sender: VK-FEDBNK-S
+received: 2026-02-02 15:14
+body:
+Rs 24000.00 sent via UPI on 02-02-2026 at 14:08:20 to Mrs ASHA RAO.Ref:172902227918.Not you? Call 15888718033/SMS BLOCKUPI to 72824 79048 -Federal Bank
+expect:
+amount: 24000.00
+merchant: Mrs ASHA RAO
+at: 2026-02-02 14:08
+
+=== Biometric notice -> ignore
+sender: AD-FEDBNK-S
+received: 2026-08-14 13:03
+body:
+Biometric authentication for UPI activated successfully on Jupiter. Not you? Call 50187801759/ SMS BLOCKUPI to 9983478878 -Federal Bank
+expect:
+class: IGNORE
+rule: federal.info
+
+=== Profile notice -> ignore
+sender: JM-FEDBNK-S
+received: 2026-06-24 17:00
+body:
+Dear Customer, for unrestricted banking, account transactions must match your reported profile and income. Update your income in case of mismatch - Federal Bank
+expect:
+class: IGNORE
+
+=== Jupiter credit
+sender: TM-ONJPTR
+received: 2025-01-23 14:18
+body:
+Update! INR97422.0  was credited to your Federal Bank account xxxx1234 on the Jupiter app. Happy Banking!
+expect:
+class: TRANSACTION
+rule: jupiter.credit
+bank: Federal Bank
+amount: 97422.00
+direction: IN
+account: X1234
+at: 2025-01-23 14:18
+
+=== Jupiter small credit
+sender: TM-ONJPTR
+received: 2024-03-02 16:14
+body:
+Update! INR127.0 was credited to your Federal Bank account xxxx1234  on the Jupiter app. Happy Banking!
+expect:
+amount: 127.00
+direction: IN

@@ -1,0 +1,235 @@
+=== ICICI IMPS credit, western commas
+sender: BP-ICICIT-S
+received: 2026-11-09 11:52
+body:
+ICICI Bank Account XX123 is credited with Rs 116,665.00 on 09-Nov-26 by Account linked to mobile number XXXXX40213. IMPS Ref. no. 266915640410.
+expect:
+class: TRANSACTION
+rule: icici.imps_credit
+bank: ICICI Bank
+amount: 116665.00
+direction: IN
+method: NETBANKING
+account: X123
+ref: 266915640410
+at: 2026-11-09 11:52
+
+=== ICICI transfer between own accounts
+sender: BP-ICICIT-S
+received: 2026-11-06 15:06
+body:
+ICICI Bank Acct XX123 debited with Rs 63,000.00 on 06-Nov-26 & Acct XX123 credited.IMPS:523468535606. Call 66732681 for dispute or SMS BLOCK 123 to 9831067924
+expect:
+class: TRANSACTION
+rule: icici.self_transfer
+amount: 63000.00
+direction: OUT
+merchant: Acct XX123
+ref: 523468535606
+
+=== ICICI credit with info
+sender: BP-ICICIT-S
+received: 2026-10-30 18:08
+body:
+ICICI Bank Account XX123 credited:Rs. 2,05,086.00 on 30-Oct-26. Info CMS* CMS8082276544*ACMECORP. Available Balance is Rs. 8,24,205.56.
+expect:
+class: TRANSACTION
+rule: icici.credited_info
+amount: 205086.00
+direction: IN
+merchant: CMS* CMS8082276544*ACMECORP
+at: 2026-10-30 18:08
+
+=== ICICI collect request -> ignore
+sender: JM-ICICIT-S
+received: 2026-11-04 19:54
+body:
+ZERODHA BROKING LIMITED RZP has requested money through Google-pay. On approval, Rs 6000.00 will be debited from your Bank Account-ICICI Bank.
+expect:
+class: IGNORE
+rule: icici.collect_request
+
+=== ICICI card cancelled -> ignore
+sender: JX-ICICIT-S
+received: 2026-09-03 14:06
+body:
+ICICI Bank Credit CardXX1234 has been cancelled as per RBI guidelines for non-activation of card within 30 days of card issuance.Visit https://icici.co/xxxx for dtls
+expect:
+class: IGNORE
+rule: icici.info
+
+=== ICICI payee added -> ignore
+sender: JD-ICICIT-S
+received: 2026-09-25 12:15
+body:
+Payee Grandbull added. Transfer via Net Banking after 30 mins. Send up to Rs 2,00,000.00 for 24 hrs.  Not you?Call 96264549-ICICI Bank
+expect:
+class: IGNORE
+
+=== OneCard spend
+sender: AD-OneCrd-S
+received: 2025-09-21 13:02
+body:
+Tasty choice! You've spent Rs. 543.25 at Zomato Limited with your SBM One Credit Card ending in XX1234. Reward points served on the side. To dispute this payment, click: m.1crd.in/xxxx
+expect:
+class: TRANSACTION
+rule: onecard.spent
+bank: SBM OneCard
+amount: 543.25
+direction: OUT
+method: CARD
+account: X1234
+account_type: CREDIT_CARD
+merchant: Zomato Limited
+at: 2025-09-21 13:02
+
+=== OneCard refund
+sender: CP-OneCrd-S
+received: 2026-07-10 08:05
+body:
+Hi, We have received a refund of Rs. 750.00 from RAZ*FPL Technologies Pvt on your SBM One Credit Card. This will be adjusted against your outstanding amount and any excess credit balance can be transferred to your bank account. Check the OneCard app for details. 
+- SBM One Credit Card
+expect:
+class: TRANSACTION
+rule: onecard.refund
+amount: 750.00
+direction: IN
+refund: true
+merchant: RAZ*FPL Technologies Pvt
+
+=== OneCard bill payment -> ignore
+sender: AD-OneCrd-S
+received: 2025-09-21 13:04
+body:
+Hola! that was sweet. We have received payment against your OneCard for Rs. 543.25 on 21 Sep 2025
+expect:
+class: IGNORE
+rule: onecard.bill_payment
+
+=== OneCard declined -> ignore
+sender: CP-OneCrd-S
+received: 2025-06-11 00:42
+body:
+Sorry, we had to decline your last OneCard transaction of amount Rs.  11,799.00 at Grammarly Co*jkbd21e -Team OneCard
+expect:
+class: IGNORE
+rule: onecard.declined
+
+=== OneCard declined in USD -> ignore
+sender: AD-OneCrd
+received: 2025-03-27 12:05
+body:
+Sorry, we declined your txn of USD 99.00 at Typeform, S.l. as you've temporarily deactivated your card. Activate now
+1cardapp.page.link/xxxx
+-Team OneCard
+expect:
+class: IGNORE
+
+=== OneCard e-mandate upcoming
+sender: AX-ONECRD-S
+received: 2025-06-09 22:41
+body:
+Hi NAME, you have an upcoming debit for the emandate registered on GrammarlyInc of INR11799.0 on 11/6/2025. View Details https://1cardapp.page.link/xxxx -Team OneCard
+expect:
+class: UPCOMING_FINANCE
+rule: onecard.emandate_upcoming
+kind: MANDATE
+amount: 11799.00
+merchant: GrammarlyInc
+due: 2025-06-11 22:41
+
+=== OneCard bill due -> ignore
+sender: CP-OneCrd
+received: 2024-05-17 12:30
+body:
+Hey, Your OneCard bill is due tomorrow, 18-May. Pay directly from OneCard app to avoid interest charges and impact on your credit score 1cardapp.page.link/xxxx
+-OneCard
+expect:
+class: IGNORE
+rule: onecard.info
+
+=== Axis collect request -> ignore
+sender: CP-AXISBK-S
+received: 2025-11-04 21:24
+body:
+Blinkit has requested money on the JUPITER UPI app. On approval, INR 364.00 will be debited from your A/c - Axis Bank
+expect:
+class: IGNORE
+rule: axis.collect_request
+
+=== Axis collect request 2 -> ignore
+sender: AD-AXISBK-S
+received: 2025-10-15 23:29
+body:
+DISTRICT has requested money on the JUPITER UPI app. On approval, INR 1946.51 will be debited from your A/c - Axis Bank
+expect:
+class: IGNORE
+
+=== Axis mandate set up
+sender: AX-AxisBk
+received: 2025-02-02 15:14
+body:
+UPI mandate set up for APPLE MEDIA SERVICES for INR 389.00. Not you? Call us on 54634786122 - Axis Bank
+expect:
+class: UPCOMING_FINANCE
+rule: axis.mandate_created
+kind: MANDATE
+amount: 389.00
+merchant: APPLE MEDIA SERVICES
+
+=== Axis mandate created
+sender: AX-AXISBK
+received: 2024-11-26 20:37
+body:
+Your UPI mandate has been successfully created towards APPLE MEDIA SERVICES for INR 389.00 - Axis Bank
+expect:
+class: UPCOMING_FINANCE
+amount: 389.00
+merchant: APPLE MEDIA SERVICES
+
+=== Unity savings interest
+sender: AD-UNTYBK-S
+received: 2026-11-01 13:04
+body:
+Dear Customer, Savings Interest of Rs. 12.00 has been credited to your A/c XXXXXXXXXXX1234 on 31/10/2026 - Unity Bank
+expect:
+class: TRANSACTION
+rule: unity.interest
+bank: Unity Bank
+amount: 12.00
+direction: IN
+merchant: Savings interest
+at: 2026-10-31 13:04
+
+=== Unity dormant notice -> ignore
+sender: AD-UNTYBK-S
+received: 2026-11-02 11:14
+body:
+Dear Customer, your Unity SFB Savings Account is inactive/dormant. To ensure seamless credit of your FD maturity proceeds, please visit your nearest Unity SFB branch and complete account reactivation.
+expect:
+class: IGNORE
+rule: unity.info
+
+=== AU NEFT debit
+sender: JM-AUBANK-S
+received: 2025-11-11 08:35
+body:
+Your NEFT payment with UTR AUBLN23878375762833125 for Rs 5,943.00 is debited on 11/11/2025 at . If not done by you, call 9153549306. - AU Bank
+expect:
+class: TRANSACTION
+rule: au.transfer_debit
+bank: AU Bank
+amount: 5943.00
+direction: OUT
+method: NETBANKING
+ref: AUBLN23878375762833125
+at: 2025-11-11 08:35
+
+=== Kotak promo without suffix -> ignore
+sender: VM-KOTAKB
+received: 2025-05-02 18:51
+body:
+Dear Customer, enjoy a Lifetime FREE Credit Card & Up to 8 free PVR movie tickets annually with Kotak League Credit Card https://1.kmbl.in/xxxx T&C
+expect:
+class: IGNORE
+rule: kotak.info

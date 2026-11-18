@@ -1,0 +1,221 @@
+=== Delivered
+sender: JK-ESHOPB-S
+received: 2026-10-24 20:22
+body:
+Delivered: ROSALA .. and 4 more items is delivered successfully. Thank you for letting us serve you. Track: t.eshopbox.com/xxxx - Team Eshopbox
+expect:
+class: UPCOMING_DELIVERY
+rule: delivery.delivered
+kind: DELIVERY
+delivery: DELIVERED
+
+=== Out for delivery
+sender: CP-ESHOPB-S
+received: 2026-10-24 09:45
+body:
+Arriving today: Your package with ROSALA .. and 4 more items is out for delivery. Track: t.eshopbox.com/xxxx - Team Eshopbox
+expect:
+class: UPCOMING_DELIVERY
+rule: delivery.out_for_delivery
+delivery: OUT_FOR_DELIVERY
+
+=== Shipped
+sender: JK-ESHOPB-S
+received: 2026-10-21 14:08
+body:
+Shipped: ROSALA .. and 4 more items is shipped and will be delivered by 2026-10-24. Track: t.eshopbox.com/xxxx - Team Eshopbox
+expect:
+class: UPCOMING_DELIVERY
+rule: delivery.shipped
+delivery: SHIPPED
+
+=== Order placed -> ignore
+sender: CP-ESHOPB-S
+received: 2026-10-20 03:00
+body:
+Order Placed: Your order for ROSALA .. and 4 more items is placed. We will notify you once the order is shipped. Track: eshpbx.in/xxxx - Team Eshopbox
+expect:
+class: IGNORE
+rule: delivery.placed
+
+=== Delivered with order number
+sender: VM-FRSCLB-S
+received: 2026-10-09 20:49
+body:
+Your FirstClub order FC62601815908301 has been delivered.
+Help us stay sustainable! You can return the bag to the delivery partner on your next order. -FirstClub
+expect:
+class: UPCOMING_DELIVERY
+delivery: DELIVERED
+tracking: FC62601815908301
+
+=== India Post out for delivery
+sender: JK-INPOST-S
+received: 2026-08-05 09:40
+body:
+Item: IT761318609IN is out for delivery. Delivery will be attempted by - RAVI  SHARMA (BEAT_39) - on 2026-08-05 - IndiaPost
+expect:
+class: UPCOMING_DELIVERY
+delivery: OUT_FOR_DELIVERY
+tracking: IT761318609IN
+
+=== Courier delivering today
+sender: CP-ITLSHP-S
+received: 2026-06-24 11:28
+body:
+Your The Lighthou... will be delivered today by Delhivery courier. Track: https://itl.to?t/23909960308246 Team, iThink Logistics
+expect:
+class: UPCOMING_DELIVERY
+delivery: OUT_FOR_DELIVERY
+
+=== Food delivery code -> ignore
+sender: VM-SWIGGY-S
+received: 2026-09-27 00:29
+body:
+PLEASE SHARE THIS CODE AFTER CHECKING ALL THE ITEMS IN THE DELIVERED ORDER : 3989. Swiggy Order 381948219935181 from Sando Club
+expect:
+class: IGNORE
+rule: otp
+
+=== Zomato booking (sample from the build prompt) -> ignore
+sender: JM-ZOMATO-S
+received: 2026-11-16 12:00
+body:
+Zomato Dining: Slot booked for 08:45PM, 16 Nov, for 2 people.
+Check out booking details: zoma.to/ZOMATO/zm/do/19378657975 -ZOMATO
+expect:
+class: IGNORE
+rule: no_money
+
+=== OTP from a bank -> ignore
+sender: AD-HDFCBK-S
+received: 2026-11-16 12:00
+body:
+123456 is the OTP for your transaction of Rs. 499.00 at AMAZON on HDFC Bank Card 1234. Valid for 5 mins. Do not share it with anyone.
+expect:
+class: IGNORE
+rule: otp
+
+=== OTP from a phone number -> ignore
+sender: +532319487574
+received: 2026-11-16 12:00
+body:
+654321 is your login OTP. Do not share it with anyone.
+expect:
+class: IGNORE
+rule: otp
+
+=== Promotional suffix -> spam
+sender: VM-HDFCBN-P
+received: 2026-11-16 12:00
+body:
+Get a pre-approved personal loan up to Rs 5 lakh in 10 seconds. Apply now: hdfcbk.io/xxxx
+expect:
+class: SPAM
+rule: promo_suffix
+
+=== Sender on the spam list -> spam
+sender: AX-DOMINO-S
+received: 2026-11-16 12:00
+spam_list: DOMINO
+body:
+Your favourite pizza is waiting! Flat 50% off today only.
+expect:
+class: SPAM
+rule: spam_list
+
+=== Personal SMS -> ignore
+sender: +218625276018
+received: 2026-11-16 12:00
+body:
+Reached home, will call you later.
+expect:
+class: IGNORE
+rule: personal
+
+=== Unknown sender, money words -> undecided
+sender: AD-PAYZAP-S
+received: 2026-11-16 12:00
+body:
+Rs 50 cashback has been credited to your PayZapp wallet.
+expect:
+class: none
+rule: undecided
+
+=== Bonds, no money words -> ignore
+sender: CP-WINTWL-S
+received: 2026-10-06 03:26
+body:
+Units transfer for Finnable Credit  is successful and
+the units have been successfully credited to Wint Wealth demat account.
+Team Wint Wealth
+expect:
+class: IGNORE
+
+=== Merchant refund credited -> refund card
+sender: AD-CTRLXT-S
+received: 2026-11-06 03:04
+body:
+Dear customer, the refund of ₹466.20 for your Ownly Order #6559797114710497465 was credited to the original source - Ownly
+expect:
+class: TRANSACTION
+rule: general.refund_credited
+amount: 466.20
+direction: IN
+refund: true
+method: OTHER
+merchant: Ownly
+at: 2026-11-06 03:04
+
+=== Merchant refund credited, smaller amount
+sender: AX-CTRLXT-S
+received: 2026-10-21 14:59
+body:
+Dear customer, the refund of ₹100.38 for your Ownly Order #1752917034236671276 was credited to the original source - Ownly
+expect:
+class: TRANSACTION
+amount: 100.38
+merchant: Ownly
+
+=== Merchant refund initiated -> ignore
+sender: AD-CTRLXT-S
+received: 2026-11-06 03:04
+body:
+Dear customer, refund of ₹466.20 for your Ownly Order #9426846563212233079 is initiated. It should reflect in 4–7 days - Ownly
+expect:
+class: IGNORE
+rule: general.refund_initiated
+
+=== Merchant refund initiated, other amount -> ignore
+sender: AD-CTRLXT-S
+received: 2026-10-21 14:58
+body:
+Dear customer, refund of ₹100.38 for your Ownly Order #3440268599528907866 is initiated. It should reflect in 4–7 days - Ownly
+expect:
+class: IGNORE
+rule: general.refund_initiated
+
+=== Telecom bill -> ignore (bill tracking is out of scope)
+sender: AD-AIRBIL-S
+received: 2026-10-27 06:24
+body:
+Details of bill dated 27-OCT-2026 for Airtel Mobile Account No.1-7617603137215 
+Total Due: Rs 3314.62
+Due date: 06-NOV-2026
+This month's total charges : Rs 3314.62
+Previous Due: Rs 2116.92
+Payments: Rs 2116.92
+Ebill has been sent to xxxx@wintwealth.com 
+To view & pay your bill online, click https://www.airtel.in/xxxx
+expect:
+class: IGNORE
+rule: general.bill
+
+=== Gift voucher with code -> ignore like an OTP (code masked)
+sender: CP-SMRTBY-S
+received: 2026-10-21 14:47
+body:
+Dear NAME NAME, Congratulations on achieving the Annual Benefit I on your REGALIA GOLD Credit Card! You have received Smartbuy E-Voucher INR 5000 Value: 5000.0 Qty: 1 Denomination: 5000.0 Code: ABCD1EFG2 PIN: 0 Validity: 2027-05-06 00:00:00 Note: No physical voucher will be sent. Team SmartBuy
+expect:
+class: IGNORE
+rule: otp

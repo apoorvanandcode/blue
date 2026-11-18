@@ -1,0 +1,188 @@
+=== UPI AutoPay scheduled -> upcoming
+sender: AX-SBIUPI-S
+received: 2026-11-02 09:09
+body:
+Dear UPI User, UPI AutoPay for Wintwealth debit of Rs.9957.80 is scheduled on .03/11/26, xxxx@ybl. Please ensure sufficient balance in your account. -SBI
+expect:
+class: UPCOMING_FINANCE
+rule: sbi.autopay_scheduled
+kind: AUTO_DEBIT
+amount: 9957.80
+merchant: Wintwealth
+upi: xxxx@ybl
+due: 2026-11-03 09:09
+
+=== NEFT credit
+sender: AD-SBIPSG-S
+received: 2026-10-29 13:37
+body:
+Dear Customer, INR 286.08 credited to your A/c No XX1234 on 29/10/2026 through NEFT with UTR IDFB6302M6535285 by ARMAN FINANCIAL SERVICES LIMITED, INFO: BATCHID:0027 NCD-SBI
+expect:
+class: TRANSACTION
+rule: sbi.neft_credit
+bank: SBI
+amount: 286.08
+direction: IN
+method: NETBANKING
+account: X1234
+merchant: ARMAN FINANCIAL SERVICES LIMITED
+ref: IDFB6302M6535285
+at: 2026-10-29 13:37
+
+=== NEFT credit (interest)
+sender: AX-SBIPSG-S
+received: 2026-02-26 17:06
+body:
+Dear Customer, INR 97.46 credited to your A/c No XX1234 on 26/02/2026 through NEFT with UTR AXISP76836450749 by FINNABLE CREDIT PRIVATE LIMITED, INFO: BATCHID:0034 INTERESTFEB26ABCDE1234F-SBI
+expect:
+rule: sbi.neft_credit
+amount: 97.46
+merchant: FINNABLE CREDIT PRIVATE LIMITED
+
+=== UPI debit
+sender: JK-SBIUPI-S
+received: 2026-10-06 09:53
+body:
+Dear UPI user A/C X1234 debited by 2000.00 on date 06Oct26 trf to NAME NAME Refno 628831436676 If not u? call-5020679701 for other services-94417587-SBI
+expect:
+class: TRANSACTION
+rule: sbi.upi_debit
+amount: 2000.00
+direction: OUT
+method: UPI
+account: X1234
+merchant: NAME NAME
+ref: 628831436676
+at: 2026-10-06 09:53
+
+=== NACH debit
+sender: AX-CBSSBI-S
+received: 2026-10-02 09:22
+body:
+Dear Customer, Your A/C XXXXX502817 has a debit by NACH of Rs 3,000.00 on 02/10/26. Avl Bal Rs 11,974.09. Download YONO - SBI
+expect:
+class: TRANSACTION
+rule: sbi.nach_debit
+amount: 3000.00
+direction: OUT
+method: AUTO_DEBIT
+account: X2817
+merchant: NACH
+at: 2026-10-02 09:22
+
+=== Interest credit
+sender: AX-CBSSBI-S
+received: 2026-07-31 12:27
+body:
+Your A/C XXXXX630492 has credit for MML INTEREST of Rs 16.00 on 31/07/26. Avl Bal Rs 9,757.49.-SBI
+expect:
+class: TRANSACTION
+rule: sbi.credit_for
+amount: 16.00
+direction: IN
+merchant: MML INTEREST
+account: X0492
+
+=== YONO transfer, lakh commas
+sender: AX-SBYONO-S
+received: 2026-10-01 15:14
+body:
+Your Ac Xx1234 debited Rs.5,00,000.00 for transfer to GRANDB Ac Xx1234 dt 01.10.26 Ref 787731322817. If not done by you, call 2800239042. YONO SBI
+expect:
+class: TRANSACTION
+rule: sbi.yono_transfer
+amount: 500000.00
+direction: OUT
+method: NETBANKING
+merchant: GRANDB
+ref: 787731322817
+at: 2026-10-01 15:14
+
+=== Income tax refund
+sender: AX-SBIBNK-S
+received: 2025-10-03 16:44
+body:
+Dear Customer, For PAN XXXXXX234F, An IT Refund amount of Rs 11570 for AY-2025-26 has been credited to your account XXXXXXXXXXXXX1234 on 2025-10-03. -SBI
+expect:
+class: TRANSACTION
+rule: sbi.it_refund
+amount: 11570.00
+direction: IN
+merchant: Income Tax refund
+at: 2025-10-03 16:44
+
+=== Debit card transaction
+sender: AX-ATMSBI-S
+received: 2026-03-03 22:56
+body:
+Dear Customer, transaction number 586111489364 for Rs.35188.00 by SBI Debit Card X1234 done at 13372118 on 03Mar26 at 22:56:40. Your updated available balance is Rs.27761.95. If not done by you, forward this SMS to 4900847453/ call 8838306400/4761436537 to block card. GOI helpline for cyber fraud 1930.
+expect:
+class: TRANSACTION
+rule: sbi.debit_card
+amount: 35188.00
+method: CARD
+account_type: DEBIT_CARD
+ref: 586111489364
+at: 2026-03-03 22:56
+
+=== IMPS credit
+sender: BX-SBIINB
+received: 2025-02-19 18:45
+body:
+Dear Customer, Your a/c no. XXXXXXXX1234 is credited by Rs.1.00 on 19-02-25 by a/c linked to mobile 9XXXXXX123-Berar Finance Limit (IMPS Ref no 156563048137).If not done by you, call 4433734419. -SBI
+expect:
+class: TRANSACTION
+rule: sbi.imps_credit
+amount: 1.00
+direction: IN
+method: NETBANKING
+merchant: Berar Finance Limit
+ref: 156563048137
+at: 2025-02-19 18:45
+
+=== E-mandate active -> upcoming
+sender: BZ-SBIINB
+received: 2023-09-04 13:14
+body:
+Dear Customer, UMRN SBIN8923760926030926 of E-MANDATE SBI REQUEST ID TM1026751125328 OF RS. 100000 IN A/C XX1234 IS ACTIVE. In case of any issues please contact branch -SBI
+expect:
+class: UPCOMING_FINANCE
+rule: sbi.emandate_active
+kind: MANDATE
+amount: 100000.00
+
+=== NACH dishonoured -> ignore
+sender: AX-CBSSBI-S
+received: 2026-08-02 08:32
+body:
+Cheque/NACH dishonoured in Acc XXXXX771305 for 4 times in FY due to insufficient funds. Cheque/NACH facility is stopped. Please contact Branch immediately.-SBI
+expect:
+class: IGNORE
+rule: sbi.declined
+
+=== POS declined -> ignore
+sender: AD-ATMSBI
+received: 2024-01-08 20:13
+body:
+Dear SBI customer, your transaction at POS 98679421 has been declined due to insufficient fund in your account.
+expect:
+class: IGNORE
+rule: sbi.declined
+
+=== Beneficiary activated -> ignore
+sender: AD-SBYONO-S
+received: 2026-10-01 16:30
+body:
+Beneficiary NAME NAME has been activated. You can now transfer upto Rs. 5 lacs to this beneficiary during the cooling period of 4 days. YONO, SBI
+expect:
+class: IGNORE
+rule: sbi.info
+
+=== PIN digits -> ignore as OTP
+sender: JK-SBIINB
+received: 2023-09-04 13:01
+body:
+Dear Customer, Last two digits for your ATM PIN change request is 00. Do not share with anyone. -SBI
+expect:
+class: IGNORE
+rule: otp

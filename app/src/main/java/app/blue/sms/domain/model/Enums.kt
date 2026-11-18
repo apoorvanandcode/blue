@@ -1,0 +1,22 @@
+package app.blue.sms.domain.model
+
+// Stored in Room by name. Never rename a constant without a migration.
+
+enum class SmsClass { TRANSACTION, UPCOMING_FINANCE, UPCOMING_DELIVERY, SPAM, IGNORE }
+
+/** Who produced a classification or extraction. */
+enum class ProcessedBy { RULES, AI, USER }
+
+enum class Direction { IN, OUT }
+
+enum class PaymentMethod { UPI, CARD, NETBANKING, AUTO_DEBIT, ATM, OTHER }
+
+enum class TxnStatus { PENDING, CONFIRMED, SKIPPED, DUPLICATE, NOT_A_TRANSACTION }
+
+enum class AccountType { SAVINGS, CREDIT_CARD, DEBIT_CARD }
+
+enum class ForWhomType { ME, TAG, CONTACT }
+
+enum class UpcomingKind { SIP, MANDATE, AUTO_DEBIT, DELIVERY }
+
+enum class UpcomingStatus { PROPOSED, ACTIVE, CLOSED, REJECTED }

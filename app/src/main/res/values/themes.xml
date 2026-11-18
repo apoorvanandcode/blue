@@ -1,0 +1,4 @@
+<resources>
+    <color name="ic_launcher_background">#1F5FD6</color>
+    <style name="Theme.Blue" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

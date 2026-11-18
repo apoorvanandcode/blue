@@ -1,0 +1,370 @@
+=== Credit card spend
+sender: AD-HDFCBK-S
+received: 2026-11-16 17:57
+body:
+Spent Rs.9334.43 On HDFC Bank Card 1234 At PYANNOTEAI On 2026-11-16:17:56:55.Not You? To Block+Reissue Call 48483726167/SMS BLOCK CC 1234 to 6136134125
+expect:
+class: TRANSACTION
+rule: hdfc.card_spent
+bank: HDFC Bank
+amount: 9334.43
+direction: OUT
+method: CARD
+account: X1234
+account_type: CREDIT_CARD
+merchant: PYANNOTEAI
+at: 2026-11-16 17:56
+
+=== Credit card spend, no decimals
+sender: AD-HDFCBK-S
+received: 2026-11-14 23:55
+body:
+Spent Rs.118 On HDFC Bank Card 1234 At BLINKIT On 2026-11-14:23:55:28.Not You? To Block+Reissue Call 34273167232/SMS BLOCK CC 1234 to 7865635515
+expect:
+amount: 118.00
+merchant: BLINKIT
+account_type: CREDIT_CARD
+
+=== Credit card spend, messy merchant
+sender: AD-HDFCBK-S
+received: 2026-11-14 20:05
+body:
+Spent Rs.1001 On HDFC Bank Card 1234 At ..SALT AND PEPPER _ On 2026-11-14:20:05:26.Not You? To Block+Reissue Call 15877065894/SMS BLOCK CC 1234 to 9113114402
+expect:
+merchant: SALT AND PEPPER
+amount: 1001.00
+
+=== Amount Spent format
+sender: AD-HDFCBK-S
+received: 2026-11-15 01:09
+body:
+Amount Spent: Rs.8850 with HDFC Bank Credit Card 1234 at Facebook India Online on 2026-11-15:01:09:01 This transaction was completed without any additional authentication factor mandated by RBI. Not You? To Block and Reissue, please call 52646288975 or SMS BLOCK CC 1234 to 2402614014
+expect:
+class: TRANSACTION
+rule: hdfc.card_amount_spent
+amount: 8850.00
+merchant: Facebook India Online
+account_type: CREDIT_CARD
+at: 2026-11-15 01:09
+
+=== Card autopay upcoming in USD -> no amount
+sender: AD-HDFCBK-S
+received: 2026-11-15 15:54
+body:
+Alert:
+USD.99.00 will be debited on 16/11/2026 from HDFC Bank Card 1234 for pyannoteAI
+ID:YY2QGGgazq
+Act:https://1.hdfc.bank.in/xxxx
+expect:
+class: UPCOMING_FINANCE
+rule: hdfc.card_upcoming
+kind: AUTO_DEBIT
+amount: none
+merchant: pyannoteAI
+due: 2026-11-16 15:54
+
+=== Card autopay upcoming in INR
+sender: AD-HDFCBK-S
+received: 2026-11-13 13:08
+body:
+Alert:
+INR.8850.00 will be debited on 15/11/2026 from HDFC Bank Card 1234 for FACEBOOK INDIA ONLIN..
+ID:YUUsiLkr1P
+Act:https://1.hdfc.bank.in/xxxx
+expect:
+class: UPCOMING_FINANCE
+amount: 8850.00
+merchant: FACEBOOK INDIA ONLIN
+due: 2026-11-15 13:08
+
+=== AutoPay success -> ignore (decided 2026-11-17)
+sender: AD-HDFCBK-S
+received: 2026-11-16 17:59
+body:
+AutoPay (E-mandate) Success!
+For pyannoteAI
+Txn Amt:USD99.00
+Dt:16/11/2026
+Via:HDFC Bank CC 1234
+Mandate ID: YY2QGGgazq
+For queries/block+reissue, Call 29314170586/SMS BLOCK CC 1234 to 5920831240
+expect:
+class: IGNORE
+rule: hdfc.autopay_success
+
+=== AutoPay success INR -> ignore
+sender: JM-HDFCBK-S
+received: 2026-11-11 17:53
+body:
+AutoPay (E-mandate) Success!
+For Google Play
+Txn Amt:INR1999.00
+Dt:11/11/2026
+Via:HDFC Bank CC 1234
+Mandate ID: YRJAtPkpO5
+For queries/block+reissue, Call 33448347824/SMS BLOCK CC 1234 to 6040008838
+expect:
+class: IGNORE
+rule: hdfc.autopay_success
+
+=== Card bill payment -> ignore
+sender: VM-HDFCBK-S
+received: 2026-11-03 16:18
+body:
+HDFC Bank Cardmember, Payment of Rs 164352 was credited to your card ending 1234 on 02/NOV/2026.
+expect:
+class: IGNORE
+rule: hdfc.card_bill_payment
+
+=== Card bill payment, capitals -> ignore
+sender: AD-HDFCBK-S
+received: 2026-11-02 13:31
+body:
+DEAR HDFCBANK CARDMEMBER, PAYMENT OF Rs. 164352.00 RECEIVED TOWARDS YOUR CREDIT CARD ENDING WITH 1234 ON 2-11-2026.YOUR AVAILABLE LIMIT IS RS. 626018.15
+expect:
+class: IGNORE
+rule: hdfc.card_bill_payment
+
+=== Declined -> ignore
+sender: VM-HDFCBK-S
+received: 2026-10-15 14:54
+body:
+Transaction of Rs.116665.82 Declined on HDFC Bank Credit Card 1234 Reason: Domestic Online usage limit lower than amount Increase via MyCards https://1.hdfc.bank.in/xxxx
+expect:
+class: IGNORE
+rule: hdfc.declined
+
+=== Autopay failed -> ignore
+sender: JM-HDFCBK-S
+received: 2026-07-27 10:25
+body:
+Autopay Failed:
+INR.376018.86 on 27/07/2026 via HDFC Bank Card 1234 for freshdesk
+ID:YONf6ZOsHH
+Manage:https://1.hdfc.bank.in/xxxx
+expect:
+class: IGNORE
+rule: hdfc.declined
+
+=== Reward points -> ignore
+sender: JM-HDFCBK-S
+received: 2026-11-16 13:23
+body:
+Reward Points Credited: 230 To HDFC Bank Credit Card 1234 On 15/NOV/2026 Towards Reward Points_on_GroceryCheck Here: https://1.hdfc.bank.in/xxxx
+expect:
+class: IGNORE
+rule: hdfc.info
+
+=== Card reversal -> refund
+sender: AD-HDFCBK-S
+received: 2026-09-15 11:47
+body:
+Transaction Reversed!On HDFC Bank CREDIT Card xx1234 Amt: Rs.11799 By GRAMMARLY CO*4Z4LLDQ On 2026-09-15:11:47:07
+expect:
+class: TRANSACTION
+rule: hdfc.card_reversed
+amount: 11799.00
+direction: IN
+refund: true
+merchant: GRAMMARLY CO*4Z4LLDQ
+at: 2026-09-15 11:47
+
+=== Card refund
+sender: BP-HDFCBK-S
+received: 2026-09-08 19:20
+body:
+Alert! Rs. 272 refunded by URBANCLAP TECHNOLOGIES   GURGAON      IN on 07/SEP/2026 & adjusted against HDFC Bank Credit Card 1234 View updated balance here: https://2.hdfc.bank.in/xxxx
+expect:
+class: TRANSACTION
+rule: hdfc.card_refund
+amount: 272.00
+direction: IN
+refund: true
+merchant: URBANCLAP TECHNOLOGIES GURGAON IN
+at: 2026-09-07 19:20
+
+=== Card refund with decimals
+sender: CP-HDFCBK-S
+received: 2026-08-24 15:51
+body:
+Alert! Rs. 216.09 refunded by ZOMATO                   GURGAON      IN on 23/AUG/2026 & adjusted against HDFC Bank Credit Card 1234 View updated balance here: https://8.hdfc.bank.in/xxxx
+expect:
+amount: 216.09
+merchant: ZOMATO GURGAON IN
+refund: true
+
+=== UPI sent
+sender: AD-HDFCBK-T
+received: 2026-11-13 20:05
+body:
+Sent Rs.5000.00
+From HDFC Bank A/C *1234
+To NAME NAME
+On 13/11/26
+Ref 837167868433
+Not You?
+Call 63265020146/SMS BLOCK UPI to 3016849340
+expect:
+class: TRANSACTION
+rule: hdfc.upi_sent
+amount: 5000.00
+direction: OUT
+method: UPI
+account: X1234
+account_type: SAVINGS
+merchant: NAME NAME
+ref: 837167868433
+at: 2026-11-13 20:05
+
+=== UPI sent to another person
+sender: JD-HDFCBK-T
+received: 2026-11-11 18:20
+body:
+Sent Rs.14000.00
+From HDFC Bank A/C *1234
+To RAHUL MEHTA
+On 11/11/26
+Ref 822470455853
+Not You?
+Call 14352056174/SMS BLOCK UPI to 9338014126
+expect:
+amount: 14000.00
+merchant: RAHUL MEHTA
+
+=== UPI credit from VPA
+sender: JD-HDFCBK-S
+received: 2026-11-06 15:17
+body:
+Credit Alert!
+Rs.25000.00 credited to HDFC Bank A/c XX1234 on 06-11-26 from VPA *xxxx@yescred (UPI 160443198296)
+expect:
+class: TRANSACTION
+rule: hdfc.upi_credit
+amount: 25000.00
+direction: IN
+method: UPI
+upi: xxxx@yescred
+merchant: xxxx@yescred
+ref: 160443198296
+at: 2026-11-06 15:17
+
+=== UPI debit to own account
+sender: AX-HDFCBK-S
+received: 2026-11-06 15:06
+body:
+HDFC Bank:Rs. 63000.00 debited from a/c *1234 on 06/11/26 to a/c **1234 (UPI Ref No. 672492086828). Not you? Call on 99093100251 to report
+expect:
+class: TRANSACTION
+rule: hdfc.upi_debit
+amount: 63000.00
+direction: OUT
+method: UPI
+merchant: a/c **1234
+ref: 672492086828
+
+=== IMPS received
+sender: VD-HDFCBK-S
+received: 2026-11-06 15:06
+body:
+Received!
+INR 63,000.00 in HDFC Bank A/c xx1234
+On 06-11-26
+For IMPS -NAME NAME- 778008374071
+Avl bal INR 7,59,413.46
+expect:
+class: TRANSACTION
+rule: hdfc.received
+amount: 63000.00
+direction: IN
+method: NETBANKING
+merchant: NAME NAME
+ref: 778008374071
+
+=== ATM withdrawal
+sender: AD-HDFCBK-S
+received: 2026-10-19 23:59
+body:
+Withdrawn Rs.5100 From HDFC Bank Card x1234 At +MG ROAD BRANCH On 2026-10-19:23:59:41 Bal Rs.1830.16 Not You? Call 98181741433/SMS BLOCK DC  1234 to 4776174093
+expect:
+class: TRANSACTION
+rule: hdfc.atm
+amount: 5100.00
+direction: OUT
+method: ATM
+account_type: DEBIT_CARD
+merchant: MG ROAD BRANCH
+at: 2026-10-19 23:59
+
+=== ATM withdrawal, other wording
+sender: AD-HDFCBK-S
+received: 2026-07-18 12:08
+body:
+Rs.2900 withdrawn from HDFC Bank Card x1234 at +MG ROAD BRANCH on 2026-07-18:12:08:35 Avl bal: 59746.10.Not You? Call 92001826330/SMS BLOCK DC 1234 to 2925449920
+expect:
+class: TRANSACTION
+rule: hdfc.atm_alt
+amount: 2900.00
+method: ATM
+at: 2026-07-18 12:08
+
+=== Login PIN failed -> ignore
+sender: AD-HDFCBK-S
+received: 2026-07-18 00:41
+body:
+Please note that your attempt to set 4 digit Login PIN via HDFC Bank mobile app has failed on 18-07-2026 00:41:14. Not you? Call 80741374847
+expect:
+class: IGNORE
+
+=== RTGS money deposited (found ignored on the phone, 2026-11-17)
+sender: AD-HDFCBK-S
+received: 2026-10-30 11:27
+body:
+RTGS Money Deposited~INR 2,00,966.00~To RANJAN JEWELLERS~Txn No: HDFCR87183417047187463~On 30-10-2026 at 11:26:35~-HDFC Bank
+expect:
+class: TRANSACTION
+rule: hdfc.transfer_deposited
+amount: 200966.00
+direction: OUT
+method: NETBANKING
+merchant: RANJAN JEWELLERS
+ref: HDFCR87183417047187463
+at: 2026-10-30 11:26
+
+=== RTGS initiated -> ignore (the deposited SMS makes the card)
+sender: VM-HDFCBK-S
+received: 2026-10-30 11:24
+body:
+RTGS transaction initiated:
+Of Rs.2,00,966.00 from your HDFC Bank A/c XX1234 using Online Banking.
+Not you?Call 48528084148/SMS BLOCK OB to 4191284529
+expect:
+class: IGNORE
+rule: hdfc.transfer_initiated
+
+=== NEFT amount deducted
+sender: JM-HDFCBK-S
+received: 2026-10-28 11:30
+body:
+Amt Deducted!
+Rs.1,000.00 from your HDFC Bank A/c XX1234 for NEFT transaction via HDFC Bank Online Banking
+Not you?Call 94153776020/SMS BLOCK OB to 8764265651
+expect:
+class: TRANSACTION
+rule: hdfc.amt_deducted
+amount: 1000.00
+direction: OUT
+method: NETBANKING
+account: X1234
+at: 2026-10-28 11:30
+
+=== Transfer limit changed -> ignore
+sender: AD-HDFCBK-S
+received: 2026-10-30 11:23
+body:
+Alert!
+Your HDFC Bank Third Party Transfer limit is now modified to Rs. 2,94,821.99.
+Limit applicable per Customer ID per Day.
+Not you? Call 60556130445
+expect:
+class: IGNORE
+rule: hdfc.info
