@@ -85,21 +85,11 @@ fun amountColor(item: ReviewItem): Color = when {
     else -> MaterialTheme.colorScheme.onSurface
 }
 
-/**
- * The big Review card: date, amount, merchant, then category and "for whom". Payment method, account,
- * the bank's own merchant name, location and the SMS sit under a "Details" row that opens and closes.
- */
+/** The big Review card: date, amount, merchant, account, then category and "for whom", then the SMS. */
 @Composable
-fun ReviewCardBody(
-    ui: ReviewUiItem,
-    full: Boolean,
-    onStar: (() -> Unit)?,
-    expanded: Boolean = false,
-    onToggleDetails: (() -> Unit)? = null,
-    onNickname: (() -> Unit)? = null,
-) {
+fun ReviewCardBody(ui: ReviewUiItem, full: Boolean, onStar: (() -> Unit)?) {
     val t = ui.item.txn
-    Column(Modifier.padding(start = 20.dp, end = 8.dp, top = if (onStar == null) 22.dp else 12.dp, bottom = if (onToggleDetails != null) 8.dp else 22.dp)) {
+    Column(Modifier.padding(start = 20.dp, end = 8.dp, top = if (onStar == null) 22.dp else 12.dp, bottom = 22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 listOfNotNull(t.txnAt?.let(Fmt::dateTime), if (t.isRefund) "Refund" else null).joinToString(" · "),
@@ -131,64 +121,24 @@ fun ReviewCardBody(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 6.dp),
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 14.dp))
+            val line = listOfNotNull(t.method?.let(Fmt::method), accountLabel(ui.item)).joinToString(" · ")
+            if (line.isNotEmpty()) {
+                Text(line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 16.dp))
             SuggestionLine("Category", ui.categoryName, ui.suggestion.categoryFromMemory)
             SuggestionLine("For", ui.forWhomName, ui.suggestion.forWhomFromMemory)
-
-            if (onToggleDetails == null) {
-                // No toggle (e.g. the card peeking underneath): show nothing more.
-            } else {
-                Row(
-                    Modifier.fillMaxWidth().clickable(onClick = onToggleDetails).padding(top = 10.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Details", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                    Icon(
-                        if (expanded) BlueIcons.ChevronUp else BlueIcons.ChevronDown,
-                        if (expanded) "Hide details" else "Show details",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                AnimatedVisibility(expanded) {
-                    Column(Modifier.padding(bottom = 12.dp)) {
-                        val line = listOfNotNull(t.method?.let(Fmt::method), accountLabel(ui.item)).joinToString(" · ")
-                        if (line.isNotEmpty()) DetailLine("Paid by", line)
-                        val key = merchantKey(ui.item)
-                        if (key != null) {
-                            DetailLine("Bank's name", key)
-                            if (onNickname != null) {
-                                Text(
-                                    if (ui.item.nickname == null) "Add a nickname" else "Change nickname",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    textDecoration = TextDecoration.Underline,
-                                    modifier = Modifier.padding(start = 104.dp, bottom = 4.dp).clickable(onClick = onNickname).padding(vertical = 4.dp),
-                                )
-                            }
-                        }
-                        if (t.locLat != null && t.locLng != null) PlaceLine(t.locLat, t.locLng, t.locAccuracy)
-                        else if (key != null) FindOnMapLine(merchantText(ui.item))
-                        if (ui.item.smsBody != null) {
-                            Text(
-                                "“${ui.item.smsBody}”",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                    }
-                }
+            if (full && ui.item.smsBody != null) {
+                Text(
+                    "“${ui.item.smsBody}”",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 14.dp),
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun DetailLine(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(104.dp))
-        Text(value, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
     }
 }
 
@@ -219,7 +169,7 @@ fun PlaceLine(lat: Double, lng: Double, accuracy: Float?) {
 
 /** No saved location: search the merchant's name on Google Maps instead. */
 @Composable
-private fun FindOnMapLine(name: String) {
+fun FindOnMapLine(name: String) {
     val context = LocalContext.current
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Text("Where", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(104.dp))

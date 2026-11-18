@@ -150,9 +150,6 @@ private fun CardsView(state: ReviewState, vm: ReviewViewModel, onOpenEdit: (Long
     val ui = state.items.first()
     val hasKey by vm.hasAiKey.collectAsStateWithLifecycle()
     val busy by vm.aiBusy.collectAsStateWithLifecycle()
-    // Details stay open or closed from card to card until changed.
-    var detailsOpen by rememberSaveable { mutableStateOf(false) }
-    var nicknameFor by remember { mutableStateOf<ReviewUiItem?>(null) }
     // A soft grey page so the white card stands up off it.
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -162,8 +159,6 @@ private fun CardsView(state: ReviewState, vm: ReviewViewModel, onOpenEdit: (Long
         SwipeCard(
             ui, next = state.items.getOrNull(1),
             onConfirm = { vm.confirm(ui) }, onSkip = { vm.skip(ui) }, onOpen = { onOpenEdit(ui.id) },
-            detailsOpen = detailsOpen, onToggleDetails = { detailsOpen = !detailsOpen },
-            onNickname = { nicknameFor = ui },
         )
         Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton("Skip", onClick = { vm.skip(ui) }, modifier = Modifier.weight(1f))
@@ -180,14 +175,6 @@ private fun CardsView(state: ReviewState, vm: ReviewViewModel, onOpenEdit: (Long
             }
         }
         AiStatusLine(ui, busy = ui.id in busy)
-    }
-    nicknameFor?.let { target ->
-        NicknameDialog(
-            bankName = merchantKey(target.item) ?: "",
-            current = target.item.nickname,
-            onDismiss = { nicknameFor = null },
-            onSave = { vm.setNickname(target, it); nicknameFor = null },
-        )
     }
 }
 
@@ -244,7 +231,6 @@ private fun Modifier.cardFace(shape: RoundedCornerShape, elevation: androidx.com
 @Composable
 private fun SwipeCard(
     ui: ReviewUiItem, next: ReviewUiItem?, onConfirm: () -> Unit, onSkip: () -> Unit, onOpen: () -> Unit,
-    detailsOpen: Boolean, onToggleDetails: () -> Unit, onNickname: () -> Unit,
 ) {
     val offset = remember(ui.id) { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -297,7 +283,7 @@ private fun SwipeCard(
                 }
                 .clickable(onClick = onOpen),
         ) {
-            ReviewCardBody(ui, full = true, onStar = null, expanded = detailsOpen, onToggleDetails = onToggleDetails, onNickname = onNickname)
+            ReviewCardBody(ui, full = true, onStar = null)
             val right = offset.value > 0
             val tint = if (right) ConfirmGreen else SkipOrange
             // Green for confirm, orange for skip, growing as the card moves.

@@ -5,6 +5,8 @@ import app.blue.sms.ui.common.BlueIcons
 import android.provider.ContactsContract
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -89,6 +91,7 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val f = state.form
     val context = LocalContext.current
+    var detailsOpen by remember { mutableStateOf(EditDetails.open) }
     var dialog by remember { mutableStateOf<String?>(null) } // "category", "tag", "date", "time"
 
     LaunchedEffect(Unit) { vm.done.collect { onDone() } }
@@ -239,34 +242,48 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // Details: plain rows, tap a line to change it.
-            Section("Details")
-            DetailRow("Merchant", f.merchant.ifBlank { "—" }) { dialog = "merchant" }
-            state.item?.let { app.blue.sms.ui.review.merchantKey(it) }?.let {
-                DetailRow("Nickname", state.item?.nickname ?: "Add") { dialog = "nickname" }
-            }
-            Box {
-                DetailRow("Paid from", state.accounts.firstOrNull { it.id == f.accountId }?.let(::accountName) ?: "—") { accountMenu = true }
-                DropdownMenu(expanded = accountMenu, onDismissRequest = { accountMenu = false }) {
-                    DropdownMenuItem(text = { Text("None") }, onClick = { vm.edit { copy(accountId = null) }; accountMenu = false })
-                    state.accounts.forEach { a -> DropdownMenuItem(text = { Text(accountName(a)) }, onClick = { vm.edit { copy(accountId = a.id) }; accountMenu = false }) }
+            // Details: plain rows, tap a line to change it. Folds away to one summary line.
+            DetailsHeader(
+                open = detailsOpen,
+                summary = listOfNotNull(
+                    f.method?.let(Fmt::method),
+                    state.accounts.firstOrNull { it.id == f.accountId }?.let(::accountName),
+                    f.txnAt?.let(Fmt::dateShortYear),
+                ).joinToString(" · "),
+                onToggle = { detailsOpen = !detailsOpen; EditDetails.open = detailsOpen },
+            )
+            AnimatedVisibility(detailsOpen) {
+                Column {
+                DetailRow("Merchant", f.merchant.ifBlank { "—" }) { dialog = "merchant" }
+                state.item?.let { app.blue.sms.ui.review.merchantKey(it) }?.let {
+                    DetailRow("Nickname", state.item?.nickname ?: "Add") { dialog = "nickname" }
+                }
+                Box {
+                    DetailRow("Paid from", state.accounts.firstOrNull { it.id == f.accountId }?.let(::accountName) ?: "—") { accountMenu = true }
+                    DropdownMenu(expanded = accountMenu, onDismissRequest = { accountMenu = false }) {
+                        DropdownMenuItem(text = { Text("None") }, onClick = { vm.edit { copy(accountId = null) }; accountMenu = false })
+                        state.accounts.forEach { a -> DropdownMenuItem(text = { Text(accountName(a)) }, onClick = { vm.edit { copy(accountId = a.id) }; accountMenu = false }) }
+                    }
+                }
+                Box {
+                    DetailRow("Method", f.method?.let(Fmt::method) ?: "—") { methodMenu = true }
+                    DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
+                        PaymentMethod.entries.forEach { m -> DropdownMenuItem(text = { Text(Fmt.method(m)) }, onClick = { vm.edit { copy(method = m) }; methodMenu = false }) }
+                    }
+                }
+                DetailRow("Date", f.txnAt?.let(Fmt::dateShortYear) ?: "—") { dialog = "date" }
+                DetailRow("Time", f.txnAt?.let(Fmt::time) ?: "—") { dialog = "time" }
+                DetailRow("UPI ID", f.upiId.ifBlank { "—" }) { dialog = "upi" }
+                DetailRow("Reference", f.refNo.ifBlank { "—" }) { dialog = "ref" }
+                DetailRow("Refund", if (f.isRefund) "Yes" else "No") { vm.edit { copy(isRefund = !isRefund) } }
+                state.item?.let { item ->
+                    val t = item.txn
+                    if (t.locLat != null && t.locLng != null) app.blue.sms.ui.review.PlaceLine(t.locLat, t.locLng, t.locAccuracy)
+                    else if (app.blue.sms.ui.review.merchantKey(item) != null) app.blue.sms.ui.review.FindOnMapLine(app.blue.sms.ui.review.merchantText(item))
+                }
+                Text("Tap any line to change it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                 }
             }
-            Box {
-                DetailRow("Method", f.method?.let(Fmt::method) ?: "—") { methodMenu = true }
-                DropdownMenu(expanded = methodMenu, onDismissRequest = { methodMenu = false }) {
-                    PaymentMethod.entries.forEach { m -> DropdownMenuItem(text = { Text(Fmt.method(m)) }, onClick = { vm.edit { copy(method = m) }; methodMenu = false }) }
-                }
-            }
-            DetailRow("Date", f.txnAt?.let(Fmt::dateShortYear) ?: "—") { dialog = "date" }
-            DetailRow("Time", f.txnAt?.let(Fmt::time) ?: "—") { dialog = "time" }
-            DetailRow("UPI ID", f.upiId.ifBlank { "—" }) { dialog = "upi" }
-            DetailRow("Reference", f.refNo.ifBlank { "—" }) { dialog = "ref" }
-            DetailRow("Refund", if (f.isRefund) "Yes" else "No") { vm.edit { copy(isRefund = !isRefund) } }
-            state.item?.txn?.let { t ->
-                if (t.locLat != null && t.locLng != null) app.blue.sms.ui.review.PlaceLine(t.locLat, t.locLng, t.locAccuracy)
-            }
-            Text("Tap any line to change it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
 
             state.item?.smsBody?.let { body ->
                 Section("Original SMS")
@@ -370,6 +387,28 @@ private fun accountName(a: app.blue.sms.data.db.AccountEntity) = listOfNotNull(
     when (a.type) { AccountType.CREDIT_CARD -> "credit card"; AccountType.DEBIT_CARD -> "debit card"; else -> null },
     "X" + a.last4,
 ).joinToString(" ")
+
+/** Whether the edit screen's Details section is open. Kept while Blue runs, so it stays as you left it. */
+private object EditDetails { var open = false }
+
+/** "DETAILS ⌄" plus, when closed, a one-line summary. Tapping toggles. */
+@Composable
+private fun DetailsHeader(open: Boolean, summary: String, onToggle: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { Section("Details") }
+            Icon(
+                if (open) BlueIcons.ChevronUp else BlueIcons.ChevronDown,
+                if (open) "Hide details" else "Show details",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 14.dp).size(20.dp),
+            )
+        }
+        if (!open && summary.isNotEmpty()) {
+            Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
 
 @Composable
 private fun Section(title: String, error: Boolean = false) {
