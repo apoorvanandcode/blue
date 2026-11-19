@@ -51,7 +51,7 @@ object SheetExport {
             when (t.status) {
                 TxnStatus.PENDING -> "To review"; TxnStatus.CONFIRMED -> "Confirmed"; TxnStatus.SKIPPED -> "Skipped"
                 TxnStatus.DUPLICATE -> "Duplicate"; TxnStatus.NOT_A_TRANSACTION -> "Not a transaction"
-                TxnStatus.INTERNAL_TRANSFER -> "Own transfer"
+                TxnStatus.INTERNAL_TRANSFER -> "Self transfer"
             },
             t.isRefund,
             t.extractedBy?.name?.lowercase(),

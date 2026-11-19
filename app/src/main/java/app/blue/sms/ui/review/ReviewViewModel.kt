@@ -114,7 +114,7 @@ class ReviewViewModel @Inject constructor(
     fun skip(ui: ReviewUiItem) = act("Skipped") { actions.skip(ui.id) }
     fun duplicate(ui: ReviewUiItem) = act("Marked as duplicate") { actions.markDuplicate(ui.id) }
     fun notTransaction(ui: ReviewUiItem) = act("Marked as not a transaction") { actions.notATransaction(ui.id) }
-    fun ownTransfer(ui: ReviewUiItem) = act("Marked as own transfer") { actions.ownTransfer(ui.id) }
+    fun ownTransfer(ui: ReviewUiItem) = act("Marked as self transfer") { actions.ownTransfer(ui.id) }
 
 
     fun undo() = viewModelScope.launch {

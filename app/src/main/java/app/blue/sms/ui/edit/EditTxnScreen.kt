@@ -12,6 +12,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import app.blue.sms.domain.insights.countsInTotals
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -132,7 +133,9 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         SecondaryButton("Save", onClick = vm::save, modifier = Modifier.weight(1f))
-                        PrimaryButton("Confirm", onClick = vm::confirm, modifier = Modifier.weight(1f))
+                        // On a self transfer, duplicate or non-payment, confirming makes it count again: say so.
+                        val counts = status == null || status.countsInTotals()
+                        PrimaryButton(if (counts) "Confirm" else "Count it", onClick = vm::confirm, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -145,6 +148,7 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
         ) {
+            NotCountedBanner(status)
             if (state.missing.isNotEmpty()) {
                 Text(
                     "To confirm, add: " + state.missing.joinToString(", ") {
@@ -313,7 +317,7 @@ fun EditTxnScreen(onDone: () -> Unit, vm: EditTxnViewModel = hiltViewModel()) {
                     LinkRow(if (status == TxnStatus.CONFIRMED) "Un-confirm (back to Review)" else "Back to Review", onClick = vm::backToReview)
                 }
                 if (status != TxnStatus.SKIPPED) LinkRow("Skip for now", onClick = vm::skip)
-                if (status != TxnStatus.INTERNAL_TRANSFER) LinkRow("Own transfer (between my accounts)", onClick = vm::ownTransfer)
+                if (status != TxnStatus.INTERNAL_TRANSFER) LinkRow("Self transfer (between my accounts)", onClick = vm::ownTransfer)
                 LinkRow("Mark as duplicate", onClick = vm::duplicate)
                 LinkRow("Not a transaction", onClick = vm::notTransaction)
                 LinkRow(if (hasKey) "Ask Gemini to re-read" else "Ask Gemini (add a key in Settings)", enabled = hasKey && !busy, onClick = vm::processWithAi)
@@ -471,4 +475,24 @@ private fun LinkRow(text: String, enabled: Boolean = true, onClick: () -> Unit) 
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.5f),
         modifier = Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(vertical = 12.dp),
     )
+}
+
+/** Top-of-screen note for entries that are kept but left out of every total. */
+@Composable
+private fun NotCountedBanner(status: TxnStatus?) {
+    val (title, body) = when (status) {
+        TxnStatus.INTERNAL_TRANSFER -> "Self transfer" to "Between your own accounts. Not counted as spent or received."
+        TxnStatus.DUPLICATE -> "Duplicate" to "Already recorded by another entry. Not counted."
+        TxnStatus.NOT_A_TRANSACTION -> "Not a payment" to "Kept for reference. Not counted."
+        else -> return
+    }
+    Column(
+        Modifier.fillMaxWidth()
+            .padding(top = 8.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

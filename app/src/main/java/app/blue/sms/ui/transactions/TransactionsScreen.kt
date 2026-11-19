@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -165,9 +166,11 @@ fun TransactionsScreen(
                     )
                 }
                 items(rows, key = { it.id }) { ui ->
-                    Box(Modifier.padding(horizontal = 20.dp)) {
+                    // Entries left out of every total (self transfers, duplicates, non-payments) are dimmed.
+                    val counted = ui.item.txn.status.countsInTotals()
+                    Box(Modifier.padding(horizontal = 20.dp).alpha(if (counted) 1f else 0.45f)) {
                         ReviewListRow(ui, onClick = { onOpenEdit(ui.id) }) {
-                            if (ui.item.txn.status != TxnStatus.CONFIRMED) {
+                            if (counted && ui.item.txn.status != TxnStatus.CONFIRMED) {
                                 Text(statusLabel(ui.item.txn.status), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -182,7 +185,7 @@ private fun statusLabel(s: TxnStatus) = when (s) {
     TxnStatus.CONFIRMED -> ""
     TxnStatus.PENDING -> "to review"
     TxnStatus.SKIPPED -> "skipped"
-    TxnStatus.DUPLICATE -> "duplicate"
-    TxnStatus.NOT_A_TRANSACTION -> "not a payment"
-    TxnStatus.INTERNAL_TRANSFER -> "own transfer"
+    TxnStatus.DUPLICATE -> "duplicate · not counted"
+    TxnStatus.NOT_A_TRANSACTION -> "not a payment · not counted"
+    TxnStatus.INTERNAL_TRANSFER -> "self transfer · not counted"
 }

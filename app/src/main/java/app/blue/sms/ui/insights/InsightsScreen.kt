@@ -29,6 +29,10 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -193,38 +197,66 @@ private fun Breakdown(title: String, rows: List<BreakdownRow>, compare: Boolean,
             Text("Nothing in this period.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
         }
         val total = rows.sumOf { it.amountPaise }.coerceAtLeast(1)
-        rows.forEach { row ->
-            val share = row.amountPaise.toFloat() / total
-            Column(
-                Modifier.fillMaxWidth()
-                    .then(if (onClick != null) Modifier.clickable { onClick(row) } else Modifier)
-                    .padding(vertical = 10.dp),
+        val topShare = (rows.maxOfOrNull { it.amountPaise } ?: 0L).toFloat() / total
+        val shown = HeatFold.shownCount(rows.map { it.amountPaise })
+        var open by rememberSaveable(title) { mutableStateOf(false) }
+        val visible = if (open) rows else rows.take(shown)
+        visible.forEach { row -> BreakdownLine(row, row.amountPaise.toFloat() / total, topShare, compare, onClick) }
+
+        val rest = rows.drop(shown)
+        if (rest.isNotEmpty()) {
+            val restShare = rest.sumOf { it.amountPaise }.toFloat() / total
+            Row(
+                Modifier.fillMaxWidth().padding(top = 4.dp).clip(RoundedCornerShape(10.dp)).clickable { open = !open }.padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                        Text(row.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            listOfNotNull(
-                                Fmt.plural(row.count, "entry", "entries"),
-                                if (compare && row.previousPaise != null) changeText(row.amountPaise, row.previousPaise) else null,
-                            ).joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    // Amount over share, both right-aligned, so every row lines up.
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(Fmt.rupeesWhole(row.amountPaise), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        Text("${(share * 100).roundToInt()}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Box(Modifier.padding(top = 8.dp).fillMaxWidth().height(4.dp).background(MaterialTheme.colorScheme.surface, CircleShape)) {
-                    Box(Modifier.fillMaxWidth(share.coerceIn(0.01f, 1f)).height(4.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f), CircleShape))
-                }
+                Text(
+                    if (open) "Show less" else "${rest.size} more · ${sharePercent(restShare)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                if (!open) Text(Fmt.rupeesWhole(rest.sumOf { it.amountPaise }), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 6.dp))
+                Icon(if (open) BlueIcons.ChevronUp else BlueIcons.ChevronDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
         }
     }
 }
+
+/** One row with its heat wash. The wash comes from the row's share only, so it never changes when the list folds or opens. */
+@Composable
+private fun BreakdownLine(row: BreakdownRow, share: Float, topShare: Float, compare: Boolean, onClick: ((BreakdownRow) -> Unit)?) {
+    val heat = HeatFold.alpha(share, topShare)
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (heat > 0f) MaterialTheme.colorScheme.primary.copy(alpha = heat) else Color.Transparent)
+            .then(if (onClick != null) Modifier.clickable { onClick(row) } else Modifier)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(row.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOfNotNull(
+                    Fmt.plural(row.count, "entry", "entries"),
+                    if (compare && row.previousPaise != null) changeText(row.amountPaise, row.previousPaise) else null,
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // Amount over share, both right-aligned, so every row lines up.
+        Column(horizontalAlignment = Alignment.End) {
+            Text(Fmt.rupeesWhole(row.amountPaise), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(sharePercent(share), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+private fun sharePercent(share: Float): String = if (share > 0f && share < 0.005f) "<1%" else "${(share * 100).roundToInt()}%"
 
 /** "▲ 12%" against the previous period; nothing when there was nothing to compare with. */
 private fun changeText(now: Long, before: Long): String? = when {

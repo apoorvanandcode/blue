@@ -166,7 +166,7 @@ private fun CardsView(state: ReviewState, vm: ReviewViewModel, onOpenEdit: (Long
         }
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                QuietLink("Own transfer") { vm.ownTransfer(ui) }
+                QuietLink("Self transfer") { vm.ownTransfer(ui) }
                 QuietLink("Duplicate") { vm.duplicate(ui) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
@@ -309,6 +309,13 @@ private fun ListView(state: ReviewState, vm: ReviewViewModel, onOpenEdit: (Long)
 /** A plain row for one entry: merchant and details on the left, amount on the right. Used by Review, Skipped and Entries. */
 @Composable
 fun ReviewListRow(ui: ReviewUiItem, onClick: () -> Unit, trailing: @Composable () -> Unit) {
+    // Kept but left out of every total: say so instead of asking for a category.
+    val notCounted = when (ui.item.txn.status) {
+        app.blue.sms.domain.model.TxnStatus.INTERNAL_TRANSFER -> "Self transfer · not counted"
+        app.blue.sms.domain.model.TxnStatus.DUPLICATE -> "Duplicate · not counted"
+        app.blue.sms.domain.model.TxnStatus.NOT_A_TRANSACTION -> "Not a payment · not counted"
+        else -> null
+    }
     Column {
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
@@ -321,6 +328,7 @@ fun ReviewListRow(ui: ReviewUiItem, onClick: () -> Unit, trailing: @Composable (
                         listOfNotNull(
                             ui.item.txn.txnAt?.let(Fmt::dateShort),
                             when {
+                                notCounted != null -> notCounted
                                 ui.item.txn.amountPaise == null -> "add the rupee amount"
                                 ui.categoryName == null -> "choose a category"
                                 ui.item.txn.categoryId == null -> "${ui.categoryName} (suggested)"
@@ -328,7 +336,7 @@ fun ReviewListRow(ui: ReviewUiItem, onClick: () -> Unit, trailing: @Composable (
                             },
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (ui.categoryName == null || ui.item.txn.amountPaise == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (notCounted == null && (ui.categoryName == null || ui.item.txn.amountPaise == null)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
                 }
