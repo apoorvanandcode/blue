@@ -33,6 +33,14 @@ val OneCardRules = BankRules(
         Rule("onecard.spent", """spent ${AMT} at (?<to>.+?) with your sbm one credit card ending in ${ACCT}""") {
             txn(OUT, PaymentMethod.CARD, AccountType.CREDIT_CARD)
         },
+        // Decided 2026-11-19: OneCard sends no other alert for these, so they make the card.
+        Rule("onecard.purchase_note", """(?:purchase of|hand-picked [a-z ]+? for|fueled up for|paid a bill of|made a booking of|your payment of)\s+${AMT}\s+(?:at|on)\s+(?<to>.+?)(?:\s+on card ending\s+${ACCT}|\.\s|\s+has been processed|\s*&)""") {
+            txn(OUT, PaymentMethod.CARD, AccountType.CREDIT_CARD)
+        },
+        // Foreign currency: no amount, the user types it (decided 2026-11-17).
+        Rule("onecard.purchase_note_fx", """your payment of (?:usd|eur|gbp|aed|sgd)\s*[\d,.]+ at (?<to>.+?) has been processed on card ending ${ACCT}""") {
+            txn(OUT, PaymentMethod.CARD, AccountType.CREDIT_CARD, amountPaise = null)
+        },
         Rule("onecard.refund", """received a refund of ${AMT} from (?<to>.+?) on your sbm one credit card""") {
             txn(IN, PaymentMethod.CARD, AccountType.CREDIT_CARD, isRefund = true)
         },

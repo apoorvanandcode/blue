@@ -29,16 +29,18 @@ class RuleClassifier(
 
     override fun classify(sms: SmsInput, spamSenders: Set<String>): ParsedSms {
         val sender = SenderIds.parse(sms.sender)
-        if (Otp.looksLikeOtp(sms.body)) return ParsedSms(SmsClass.IGNORE, "otp")
+        val bank = banks.firstOrNull { it.handles(sender.header) }
+        if (Otp.looksLikeOtp(sms.body)) {
+            // "Rs.500 without OTP/PIN HDFC Bank Card ..." is a spend, not a code. Only a bank's own transaction format can override.
+            bankHit(bank, sms)?.takeIf { it.smsClass == SmsClass.TRANSACTION }?.let { return it }
+            return ParsedSms(SmsClass.IGNORE, "otp")
+        }
         if (sender.header in spamSenders) return ParsedSms(SmsClass.SPAM, "spam_list")
         if (sender.suffix == SenderSuffix.P) return ParsedSms(SmsClass.SPAM, "promo_suffix")
         if (sender.isPhoneNumber) return ParsedSms(SmsClass.IGNORE, "personal")
 
-        banks.firstOrNull { it.handles(sender.header) }?.let { bank ->
-            for (rule in bank.rules) {
-                val m = rule.regex.find(sms.body) ?: continue
-                return rule.build(Hit(m, sms, bank.bank, rule.id, zone))
-            }
+        bank?.let { bank ->
+            bankHit(bank, sms)?.let { return it }
             return if (Money.looksLikeMoney(sms.body)) ParsedSms(null, "${bank.id}.undecided", bank.bank)
             else ParsedSms(SmsClass.IGNORE, "${bank.id}.info", bank.bank)
         }
@@ -48,5 +50,14 @@ class RuleClassifier(
 
         return if (Money.looksLikeMoney(sms.body)) ParsedSms(null, "undecided")
         else ParsedSms(SmsClass.IGNORE, "no_money")
+    }
+
+    private fun bankHit(bank: BankRules?, sms: SmsInput): ParsedSms? {
+        bank ?: return null
+        for (rule in bank.rules) {
+            val m = rule.regex.find(sms.body) ?: continue
+            return rule.build(Hit(m, sms, bank.bank, rule.id, zone))
+        }
+        return null
     }
 }

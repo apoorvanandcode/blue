@@ -34,14 +34,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Sends exactly one SMS (sender + text) per request to the Gemini Interactions API.
- * Asks Google not to store it (store=false), uses minimal thinking, and requires JSON
- * matching [AiSchema]. OTP-like SMS are refused here as a second guard.
+ * Sends exactly one SMS (sender + disguised text) per request to the Gemini Interactions API.
+ * The text is disguised by [app.blue.sms.domain.ai.SmsMasker] first: numbers, names, UPI ids and
+ * links are fakes, and the answer is swapped back on the phone. Asks Google not to store it
+ * (store=false), uses minimal thinking, and requires JSON matching [AiSchema].
+ * OTP-like SMS are refused here as a second guard.
  */
 @Singleton
 class GeminiClient @Inject constructor(
     private val secrets: SecretStore,
     private val settings: SettingsRepository,
+    private val maskers: MaskerProvider,
 ) : AiExtractor {
     private val zone = ZoneId.of("Asia/Kolkata")
     private val json = Json { ignoreUnknownKeys = true }
@@ -50,11 +53,14 @@ class GeminiClient @Inject constructor(
         if (Otp.looksLikeOtp(sms.body)) return@withContext AiOutcome.Failed("OTP SMS are never sent to Gemini", FailKind.THIS_SMS)
         val key = secrets.geminiKey() ?: return@withContext AiOutcome.Failed("No Gemini API key in Settings", FailKind.SETUP)
         val model = settings.settings.first().geminiModel
+        // Never send the real text: if the disguise can't be built, don't send at all.
+        val masked = runCatching { maskers.get().mask(sms.sender, sms.body) }
+            .getOrElse { return@withContext AiOutcome.Failed("Couldn't disguise the SMS before sending", FailKind.TEMPORARY) }
         val received = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(Instant.ofEpochMilli(sms.receivedAt).atZone(zone))
         val body = buildJsonObject {
             put("model", model)
             put("system_instruction", AiSchema.instructions)
-            put("input", "Sender: ${sms.sender}\nReceived: $received (India time)\nSMS:\n${sms.body}")
+            put("input", "Sender: ${sms.sender}\nReceived: $received (India time)\nSMS:\n${masked.text}")
             put("store", false)
             putJsonObject("generation_config") { put("thinking_level", "minimal") }
             putJsonObject("response_format") {
@@ -87,7 +93,7 @@ class GeminiClient @Inject constructor(
                 return@withContext AiOutcome.Failed("Gemini: $msg", kind)
             }
             val output = modelText(text) ?: return@withContext AiOutcome.Failed("Gemini returned no text", FailKind.THIS_SMS)
-            AiOutcome.Ok(AiReplyParser.parse(output, sms, zone))
+            AiOutcome.Ok(AiReplyParser.parse(output, sms, zone, masked::restore))
         } catch (e: InvalidAiReply) {
             AiOutcome.Failed("Gemini reply was invalid: ${e.message}", FailKind.THIS_SMS)
         } catch (e: SocketTimeoutException) {

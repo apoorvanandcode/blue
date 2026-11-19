@@ -22,7 +22,7 @@ object Money {
 
     private val amount = Regex("""(?i)(?:\brs\.?|\binr\.?|₹)\s*\d""")
     private val direction = Regex(
-        """(?i)\b(debited|credited|spent|received|refund(?:ed)?|reversed|withdrawn|sent|paid|deducted|deposited|transferred|debit(?:ed)? by|credit(?:ed)? to)\b"""
+        """(?i)\b(debited|credited|spent|received|refund(?:ed)?|reversed|withdrawn|sent|paid|deducted|deposited|transferred|debit(?:ed)? by|credit(?:ed)? to|money transfer|purchase of|payment of)\b"""
     )
 
     /** Has an amount and a money-movement word: worth a closer look (or Gemini). */

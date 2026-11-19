@@ -89,19 +89,60 @@ object AiSchema {
         put("required", JsonArray(props.keys.map(::JsonPrimitive)))
     }
 
+    /** Tuned on 20,171 real SMS in the 1.2.0 masking trial (see DECISIONS.md). Assumes the SMS was disguised by SmsMasker. */
     val instructions = """
-        You read one SMS from an Indian phone and return JSON matching the schema. Never invent values: use null, "unknown" or "none".
+        You read one SMS from an Indian phone and return JSON matching the schema. Never invent values. When a value is absent use null (never the text "none" or "unknown" in a text field); use "unknown"/"none" only where the schema lists them.
+
+        PRIVACY MASKING. The SMS was pseudonymised on the phone before you see it:
+        - Every number (amounts, balances, account and card digits, reference numbers, phone numbers, IFSC digits) was replaced by a random number of the same length. Dates and times are real.
+        - Names of people and shops were replaced by made-up words of the same shape (e.g. "Ginoge GOTOB", "Rer*vukuto"). Treat a made-up word as a real name, never as a typo or a verb.
+        - UPI ids were replaced (e.g. "desuzo19@ybl"); links became "https://x.example/...".
+        - The bank's own masking (XXXX, xx, *) is left as it was.
+        Copy masked values exactly as they appear, character for character: amount digits, merchant words, ref numbers, UPI ids, account digits.
+
         sms_class:
-        - transaction: money actually moved (UPI, card spend, NEFT/IMPS/RTGS, ATM, auto-debit done, salary or other credit, refund credited, interest, bank charges).
-        - upcoming_finance: a future debit (mandate set up, SIP or auto-debit scheduled, "will be debited").
-        - upcoming_delivery: a parcel shipped, out for delivery or delivered.
-        - spam: promotions and marketing.
-        - ignore: everything else, including OTPs, declined or failed payments, collect/payment requests not yet paid, credit card bill payments, reward points, balance or limit notices, bills and statements.
-        amount: a plain number in the SMS currency without commas (1,06,082.50 -> 106082.5). currency: ISO code, "INR" for Rs/INR/₹.
-        direction: out when money leaves the user, in when it arrives.
-        merchant: the payee or payer exactly as written in the SMS. account_last4: the last digits of the user's own account or card.
-        txn_datetime: when the money moved, as YYYY-MM-DDTHH:MM in India time; null if the SMS has no date.
-        due_date: YYYY-MM-DD for upcoming items. title: a short name for an upcoming item.
+        - transaction: money actually moved to or from the user's own bank account, card or wallet: UPI or card spend, NEFT/IMPS/RTGS, ATM withdrawal, cash deposit, executed NACH/ECS/auto-debit/mandate debit, salary or other credit, refund or reversal actually credited, interest, dividend, bank charges. Also:
+          - Every OneCard spend note ("That was a ... purchase of Rs X at Y", "You've fueled ...", "You have just paid a bill of Rs X on Y", "You've made a booking", "Your payment of Rs X at Y has been processed"): method card, account_type credit_card. OneCard sends no other alert.
+          - A refund or reversal the SMS says was already credited ("has been credited to your account / original source"), even when a merchant sends it: direction in.
+          - Wallet payments or credits reported by the wallet itself (Paytm wallet, Zomato Money).
+          - A debit from the user's bank account to pay a credit card bill (direction out).
+        - upcoming_finance: a future debit the user should expect: a mandate or autopay successfully created, registered, set up or active ("You have successfully created a mandate on <merchant> ... maximum amount", "UPI mandate has been successfully created"), SIP or auto-debit scheduled, "will be debited/deducted on <date>".
+        - upcoming_delivery: a courier's or shop's notice about the user's parcel: picked up, shipped, arriving, out for delivery, or delivered (delivery codes/PINs too; "delivered" stays upcoming_delivery even if it mentions a payment). Not home-service visits (lab sample collection, technicians), cabs or drivers on the way, or personal messages.
+        - spam: promotions and marketing: offers, loan/card/insurance offers, "cash/bonus/reward added" from games, apps or wallets to make you play or shop, "credited to your wallet, complete KYC/withdraw now" bait.
+        - ignore: everything else, including:
+          - OTPs and codes; KYC, account, PIN or app notices; statements; balance or limit alerts; personal messages.
+          - Declined or failed payments; refunds "initiated", "processed" or "will be credited / shall reflect in N days" (not yet credited).
+          - UPI collect or payment requests still waiting for approval ("has requested money", "on approving ... will be debited"); requests to approve or authorise a mandate; mandates revoked or cancelled.
+          - Bill, premium or EMI reminders with a due date but no automatic debit.
+          - Receipts from a merchant, biller or service: order placed or confirmed, recharge successful, booking or ticket confirmed, units allotted, "receipt of Rs X towards <biller> A/c", "received by Card for the Service", tax or GST payment confirmations (GSTN, CPIN, challan), broker or fund-house payouts "processed, funds will reach your bank", payment-gateway confirmations (PayU, Razorpay "transaction ... has succeeded"), card-terminal e-receipts (Card, Auth code, RRN fields). The bank, card or wallet alert records that money.
+          - HDFC "AutoPay (E-mandate) Success!" messages, even when they show a Txn Amt: the separate HDFC "Spent" alert records the money.
+          - Credit card side of a bill payment ("payment received/credited to your card").
+          - Demat debits or credits of shares or bonds (NSDL/CDSL), EPF/PF contribution or passbook notices.
+
+        Fields for transactions:
+        - amount: the money that moved, a plain number without commas (1,06,082.50 -> 106082.5); never the balance or available limit. currency: ISO code, "INR" for Rs/INR/₹.
+        - direction: out when money leaves the user, in when it arrives (a reversal or refund credited is in; HDFC "RTGS Money Deposited ~ To <name>" is out).
+        - merchant: the other party exactly as written, keeping initials (payee for out, payer for in).
+          - Only a UPI id named: use the UPI id. Only an account number: use it as written.
+          - "NEFT-<ref>-<name>" or "by <name>": the name. Own-account transfer: the destination account as written.
+          - Never the user's own bank, a greeting, a footer or an app name.
+          - When the sender itself pays (FD interest, a company's dividend), the sender's name.
+          - Only when no party is named, or the name slot is blank ("from from", "by ("): a short description such as "Savings interest", "Bank charges", "NACH debit", "NEFT credit", "UPI credit" or "ATM withdrawal".
+          - SBI "has credit for <code>": merchant "Account credit", ref_no the code.
+          - Never a wallet's own name for a wallet payment; the shop paid.
+        - upi_id: a UPI id (text@handle) as written. A number after "UPI:" is a reference, not a UPI id.
+        - account_last4: copy exactly the final 4 digits of the user's own account or card number as shown (XXXXX123456 -> "3456"; XX123 -> "123", never "0123"). Never pad, change or invent digits; never take them from a reference, folio number, phone number or the other party's account.
+        - account_type: credit_card when a credit card is used; debit_card when a debit card is used (card spend or ATM); savings for bank accounts, including UPI, NEFT/IMPS, NACH and mandate debits and credits that don't name a card; unknown for wallets. For an HDFC "Bank Card" alert: "Avl bal"/"Bal" or "BLOCK DC" means debit_card; "Avl Lmt", "BLOCK CC" or a named credit card means credit_card.
+        - method:
+          - upi: UPI, VPA, a "SMS BLOCK UPI" footer, a number after "UPI:", HDFC "Money Transfer ... UPI" alerts, and the HDFC form "Sent Rs.X From HDFC Bank A/C *1234 To <name> On <date> Ref <12 digits>" (also "Amt Sent"), even when the payee is a bank.
+          - card: card spend, and refunds or reversals credited back to a card.
+          - atm: cash withdrawn at an ATM, including "Withdrawn Rs X From ... Card ... At <place>" (the place is the merchant).
+          - netbanking: only when NEFT, IMPS, RTGS or net banking is written (this wins over "Money Transfer"; interest paid by NEFT is netbanking).
+          - auto_debit: NACH, ECS, mandate or autopay debits (debits only).
+          - other: interest, charges, NACH credits, wallet, cash deposit, cheque.
+        - ref_no: the transaction reference (Ref, RRN, UTR, IMPS/NEFT ref, "UPI: <digits>", transaction number) as written. Copy it whole with any letter prefix ("CMS123456", "N123..."). In "NEFT Cr-<IFSC>-<payer>-...-<UTR>" it is the UTR (the last segment). Never an IFSC code (4 letters, "0", 6 characters), phone number or card number.
+        - txn_datetime: when the money moved, as YYYY-MM-DDTHH:MM in India time. If the SMS gives a date without a time, use that date with the received time. If no date, null. A date without a year is in the year of the received date.
+        - due_date: YYYY-MM-DD for upcoming items. title: a short name for an upcoming item.
     """.trimIndent()
 }
 
@@ -109,9 +150,9 @@ object AiReplyParser {
     private val json = Json { ignoreUnknownKeys = true; isLenient = false }
 
     /** Validates Gemini's text and turns it into the same shape the rules produce. Throws [InvalidAiReply]. */
-    fun parse(text: String, sms: SmsInput, zone: ZoneId): ParsedSms {
+    fun parse(text: String, sms: SmsInput, zone: ZoneId, restore: (AiReply) -> AiReply = { it }): ParsedSms {
         val r = try {
-            json.decodeFromString(AiReply.serializer(), text.trim())
+            restore(json.decodeFromString(AiReply.serializer(), text.trim()))
         } catch (e: Exception) {
             throw InvalidAiReply("not valid JSON for the schema")
         }

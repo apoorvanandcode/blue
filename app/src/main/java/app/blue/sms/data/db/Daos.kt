@@ -79,6 +79,10 @@ interface SmsDao {
     @Query("SELECT * FROM sms_message WHERE classification = 'TRANSACTION' ORDER BY received_at DESC LIMIT :limit")
     suspend fun recentTransactionSms(limit: Int): List<SmsMessageEntity>
 
+    /** Every stored SMS's sender and text, for the masker's on-phone vocabulary. */
+    @Query("SELECT sender, body FROM sms_message")
+    suspend fun senderBodies(): List<SenderBody>
+
     /** Undecided SMS the AI queue should still try. */
     @Query("SELECT * FROM sms_message WHERE classification IS NULL AND ai_attempts < :maxAttempts ORDER BY received_at DESC LIMIT :limit")
     suspend fun aiQueueUndecided(maxAttempts: Int, limit: Int): List<SmsMessageEntity>
@@ -463,3 +467,5 @@ interface PendingLocationDao {
     @Query("DELETE FROM pending_location WHERE captured_at < :before")
     suspend fun deleteOlderThan(before: Long)
 }
+
+data class SenderBody(val sender: String, val body: String)

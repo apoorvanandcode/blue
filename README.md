@@ -58,10 +58,12 @@ No client ID or secret is stored in the code.
 
 Each user adds their own key in Settings (from [Google AI Studio](https://aistudio.google.com)). It is stored with Android Keystore and never included in backups.
 
+Before an SMS goes to Gemini, Blue disguises it on the phone (`domain/ai/SmsMasker.kt`): every number, name, UPI id and link is replaced with a fake, and the user's own name is always hidden. Bank wording and dates stay so Gemini can still read the message. Gemini's answer is swapped back to the real values on the phone. In a test on 20,171 real SMS, the disguised version was as accurate as the real text (99.76% vs 99.84%).
+
 ## How it works
 
 - `domain/parse`: rule-based classifier per bank, tested against SMS fixtures in `app/src/test/resources/fixtures` (anonymised).
-- `domain/ai`: Gemini fallback through the Interactions API (`store: false`).
+- `domain/ai`: Gemini fallback through the Interactions API (`store: false`), with on-phone masking (`SmsMasker`) before anything is sent.
 - `work/DailyScanWorker`: the scheduled daily scan (WorkManager).
 - `data/db`: Room database; nothing leaves the phone except what you send to Gemini or your Drive.
 

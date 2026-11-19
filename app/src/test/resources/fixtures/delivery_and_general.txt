@@ -219,3 +219,23 @@ Dear NAME NAME, Congratulations on achieving the Annual Benefit I on your REGALI
 expect:
 class: IGNORE
 rule: otp
+
+=== "was successfully delivered" (added 1.2.0)
+sender: CP-DAIRYS
+received: 2026-04-02 17:30
+body:
+Dear Customer, Your package with Order ID OID582213 was successfully delivered -DAIRYSHOP.
+expect:
+class: UPCOMING_DELIVERY
+rule: delivery.delivered
+delivery: DELIVERED
+
+=== "ARRIVING ... will deliver your shipment" (added 1.2.0)
+sender: TX-BLUDRT-S
+received: 2026-04-01 08:30
+body:
+ARRIVING: Blue Dart will deliver your shipment TODAY.Track https://bluedart.com/t
+expect:
+class: UPCOMING_DELIVERY
+rule: delivery.out_for_delivery
+delivery: OUT_FOR_DELIVERY

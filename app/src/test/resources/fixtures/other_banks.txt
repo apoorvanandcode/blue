@@ -233,3 +233,39 @@ Dear Customer, enjoy a Lifetime FREE Credit Card & Up to 8 free PVR movie ticket
 expect:
 class: IGNORE
 rule: kotak.info
+
+=== OneCard purchase note is a card spend (added 1.2.0)
+sender: AD-OneCrd-S
+received: 2024-03-02 13:20
+body:
+That was a delicious purchase of Rs.  1,240.50 at Spice Route Limited on card ending XX4321. Serving you reward pts as dessert: https://onecard.ly/x -Team OneCard
+expect:
+class: TRANSACTION
+rule: onecard.purchase_note
+amount: 1240.50
+method: CARD
+account_type: CREDIT_CARD
+account: X4321
+merchant: Spice Route Limited
+
+=== OneCard fuel note (added 1.2.0)
+sender: CP-OneCrd
+received: 2024-04-11 08:05
+body:
+You've fueled up for Rs.  2,000.00 at Highway Fuels, Hosur on card ending XX4321. Check here: https://onecard.ly/y -OneCard
+expect:
+class: TRANSACTION
+rule: onecard.purchase_note
+amount: 2000.00
+merchant: Highway Fuels, Hosur
+
+=== OneCard USD payment has no amount (added 1.2.0)
+sender: CP-OneCrd
+received: 2024-05-01 02:10
+body:
+Your payment of USD 29.00 at Formbuilder, S.l. has been processed on card ending XX4321 & earned some reward points: https://onecard.ly/z -Team OneCard
+expect:
+class: TRANSACTION
+rule: onecard.purchase_note_fx
+amount: none
+merchant: Formbuilder, S.l

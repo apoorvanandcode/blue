@@ -368,3 +368,48 @@ Not you? Call 60556130445
 expect:
 class: IGNORE
 rule: hdfc.info
+
+=== Money Transfer is a UPI payment (added 1.2.0)
+sender: AX-HDFCBK
+received: 2026-03-12 19:40
+body:
+Money Transfer:Rs 482.00 from HDFC Bank A/c **5521 on 12-03-26 to RAVI K SHARMA UPI: 607312845521 Not you? Call 18002586161
+expect:
+class: TRANSACTION
+rule: hdfc.money_transfer
+amount: 482.00
+direction: OUT
+method: UPI
+account: X5521
+account_type: SAVINGS
+merchant: RAVI K SHARMA
+ref: 607312845521
+
+=== AutoPay Active is an upcoming mandate (added 1.2.0)
+sender: AD-HDFCBK-S
+received: 2026-02-03 10:15
+body:
+AutoPay Active!
+For Melodia Music
+Starting:03/02/2026
+Mandate ID:Qx7Lm2PaZ
+On HDFC Bank Card 1234
+Manage: https://hdfc.bank.in/x
+expect:
+class: UPCOMING_FINANCE
+rule: hdfc.autopay_active
+kind: MANDATE
+merchant: Melodia Music
+
+=== Spend "without OTP/PIN" is a spend, not an OTP (added 1.2.0)
+sender: JM-HDFCBK-S
+received: 2026-05-08 21:02
+body:
+Rs.1299 without OTP/PIN HDFC Bank Card x1234 At GROCERMART On 2026-05-08:21:01:44.Not U? Block&Reissue:Call 18002586161/SMS BLOCK CC 1234 to 7308080808
+expect:
+class: TRANSACTION
+rule: hdfc.card_no_otp
+amount: 1299.00
+method: CARD
+account_type: CREDIT_CARD
+merchant: GROCERMART

@@ -11,6 +11,16 @@ val SbiRules = BankRules(
     headers = listOf("SBIUPI", "CBSSBI", "SBIINB", "ATMSBI", "SBIBNK", "SBYONO", "SBIPSG", "SBICRD", "SBMSBI"),
     rules = listOf(
         ignoreRule("sbi.declined", """declined|dishonou?red"""),
+        ignoreRule("sbi.mandate_revoked", """upi-mandate successfully revoked"""),
+        Rule("sbi.upi_mandate_created", """upi-mandate successfully created towards (?<to>.+?) for ${AMT}""") {
+            upcoming(UpcomingKind.MANDATE)
+        },
+        Rule("sbi.upi_mandate_created_alt", """upi-mandate for ${AMT} is successfully created towards (?<to>.+?)(?:\.\s|\s+-|\s*$)""") {
+            upcoming(UpcomingKind.MANDATE)
+        },
+        Rule("sbi.nach_credit", """a/c ${ACCT} has a credit by nach-\s*(?<to>.+?) of ${AMT} on (?<date>[\d/]+)""") {
+            txn(IN, PaymentMethod.OTHER)
+        },
         Rule("sbi.autopay_scheduled", """upi autopay for (?<to>.+?) debit of ${AMT} is scheduled on \.?(?<date>[\d/]+)(?:.*?(?<upi>[\w.\-]+@[a-z]+))?""") {
             upcoming(UpcomingKind.AUTO_DEBIT)
         },

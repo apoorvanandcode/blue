@@ -186,3 +186,38 @@ Dear Customer, Last two digits for your ATM PIN change request is 00. Do not sha
 expect:
 class: IGNORE
 rule: otp
+
+=== NACH credit (dividend) (added 1.2.0)
+sender: AX-CBSSBI-S
+received: 2025-08-21 09:30
+body:
+Dear Customer,Your A/C XXXXX736092 has a credit by NACH- ACME INDUSTRIES L of Rs 42.50 on 21/08/25. Avl Bal Rs 9,120.40. Download YONO-SBI
+expect:
+class: TRANSACTION
+rule: sbi.nach_credit
+amount: 42.50
+direction: IN
+method: OTHER
+account: X6092
+merchant: ACME INDUSTRIES L
+
+=== UPI mandate created is upcoming (added 1.2.0)
+sender: VM-SBIUPI-S
+received: 2026-01-05 18:00
+body:
+UPI-Mandate successfully created towards Streamly Play for Rs1499.00 -SBI
+expect:
+class: UPCOMING_FINANCE
+rule: sbi.upi_mandate_created
+kind: MANDATE
+amount: 1499.00
+merchant: Streamly Play
+
+=== UPI mandate revoked is ignored (added 1.2.0)
+sender: VA-SBIUPI-S
+received: 2026-02-05 18:00
+body:
+UPI-Mandate successfully Revoked  by Streamly Play for Rs1499.00 -SBI
+expect:
+class: IGNORE
+rule: sbi.mandate_revoked

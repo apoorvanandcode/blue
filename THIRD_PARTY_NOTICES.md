@@ -7,6 +7,10 @@
 
 Both are licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org
 
+## Word list
+
+`app/src/main/assets/english_words.dat` (gzipped text) is the lowercase subset of `web2` (Webster's Second International Dictionary, 1934), as shipped in BSD `/usr/share/dict`. Its copyright has lapsed; it is in the public domain. Blue uses it on the phone to tell ordinary words from names when disguising SMS.
+
 ## Icons
 
 The settings cog in `ui/common/BlueIcons.kt` is from **Lucide** (https://lucide.dev), licensed under the ISC License:

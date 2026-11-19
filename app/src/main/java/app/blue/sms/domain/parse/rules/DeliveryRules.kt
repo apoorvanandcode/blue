@@ -11,9 +11,9 @@ import app.blue.sms.domain.sms.SenderInfo
 object DeliveryRules {
     private fun rx(p: String) = Regex(p, RegexOption.IGNORE_CASE)
     private val placed = rx("""order placed|order (?:is|has been) placed|placed successfully""")
-    private val outFor = rx("""out for delivery|arriving today|will be delivered today|delivery today""")
+    private val outFor = rx("""out for delivery|arriving today|will be delivered today|delivery today|^\s*arriving\b|will deliver your (?:shipment|order|package|parcel)""")
     private val shipped = rx("""\b(?:shipped|dispatched)\b|in transit""")
-    private val delivered = rx("""\b(?:is|has been|was|been)\s+delivered\b|delivered successfully|^delivered\b""")
+    private val delivered = rx("""\b(?:is|has been|was|been)\s+(?:successfully\s+)?delivered\b|delivered successfully|^delivered\b|\bwe(?:'ve| have) delivered your\b""")
 
     private val trackingPatterns = listOf(
         Regex("""\b([A-Z]{2}\d{9}[A-Z]{2})\b"""), // India Post

@@ -49,6 +49,15 @@ val HdfcRules = BankRules(
         Rule("hdfc.card_refund", """${AMT} refunded by (?<to>.+?) on (?<date>\d{1,2}/[a-z]{3}/\d{4}) & adjusted against hdfc bank credit card ${ACCT}""") {
             txn(IN, PaymentMethod.CARD, AccountType.CREDIT_CARD, isRefund = true)
         },
+        Rule("hdfc.money_transfer", """money transfer:\s*${AMT} from hdfc bank a/c ${ACCT} on (?<date>[\d-]+) to (?<to>.+?)\s+upi:\s*(?<ref>\d+)""") {
+            txn(OUT, PaymentMethod.UPI)
+        },
+        Rule("hdfc.autopay_active", """autopay active!\s*for (?<to>.+?)\s+starting:\s*(?<date>[\d/]+).*?on hdfc bank card ${ACCT}""") {
+            upcoming(UpcomingKind.MANDATE)
+        },
+        Rule("hdfc.card_no_otp", """${AMT} without otp/pin hdfc bank card ${ACCT} at (?<to>.+?) on $CARD_DATE""") {
+            txn(OUT, PaymentMethod.CARD, hdfcCardType())
+        },
         Rule("hdfc.upi_sent", """sent ${AMT}\s+from hdfc bank a/c ${ACCT}\s+to (?<to>.+?)\s+on (?<date>[\d/]+)\s+ref (?<ref>\d+)""") {
             txn(OUT, PaymentMethod.UPI)
         },
