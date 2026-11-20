@@ -37,7 +37,7 @@ import javax.inject.Singleton
  * Sends exactly one SMS (sender + disguised text) per request to the Gemini Interactions API.
  * The text is disguised by [app.blue.sms.domain.ai.SmsMasker] first: numbers, names, UPI ids and
  * links are fakes, and the answer is swapped back on the phone. Asks Google not to store it
- * (store=false), uses minimal thinking, and requires JSON matching [AiSchema].
+ * (store=false), uses low thinking, and requires JSON matching [AiSchema].
  * OTP-like SMS are refused here as a second guard.
  */
 @Singleton
@@ -62,7 +62,8 @@ class GeminiClient @Inject constructor(
             put("system_instruction", AiSchema.instructions)
             put("input", "Sender: ${sms.sender}\nReceived: $received (India time)\nSMS:\n${masked.text}")
             put("store", false)
-            putJsonObject("generation_config") { put("thinking_level", "minimal") }
+            // 2026-11-21 test on 2,193 hard SMS: any thinking fixed ~14 more; higher levels added cost only.
+            putJsonObject("generation_config") { put("thinking_level", "low") }
             putJsonObject("response_format") {
                 put("type", "text")
                 put("mime_type", "application/json")

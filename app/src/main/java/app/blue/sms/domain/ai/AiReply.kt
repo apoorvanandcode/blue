@@ -89,7 +89,7 @@ object AiSchema {
         put("required", JsonArray(props.keys.map(::JsonPrimitive)))
     }
 
-    /** Tuned on 20,171 real SMS in the 1.2.0 masking trial (see DECISIONS.md). Assumes the SMS was disguised by SmsMasker. */
+    /** Tuned on 20,171 real SMS in the 1.2.0 masking trial; the "YOUR DECISIONS" list holds the user's grey-area choices (1.2.2). See DECISIONS.md. Assumes the SMS was disguised by SmsMasker. */
     val instructions = """
         You read one SMS from an Indian phone and return JSON matching the schema. Never invent values. When a value is absent use null (never the text "none" or "unknown" in a text field); use "unknown"/"none" only where the schema lists them.
 
@@ -104,14 +104,13 @@ object AiSchema {
         - transaction: money actually moved to or from the user's own bank account, card or wallet: UPI or card spend, NEFT/IMPS/RTGS, ATM withdrawal, cash deposit, executed NACH/ECS/auto-debit/mandate debit, salary or other credit, refund or reversal actually credited, interest, dividend, bank charges. Also:
           - Every OneCard spend note ("That was a ... purchase of Rs X at Y", "You've fueled ...", "You have just paid a bill of Rs X on Y", "You've made a booking", "Your payment of Rs X at Y has been processed"): method card, account_type credit_card. OneCard sends no other alert.
           - A refund or reversal the SMS says was already credited ("has been credited to your account / original source"), even when a merchant sends it: direction in.
-          - Wallet payments or credits reported by the wallet itself (Paytm wallet, Zomato Money).
           - A debit from the user's bank account to pay a credit card bill (direction out).
         - upcoming_finance: a future debit the user should expect: a mandate or autopay successfully created, registered, set up or active ("You have successfully created a mandate on <merchant> ... maximum amount", "UPI mandate has been successfully created"), SIP or auto-debit scheduled, "will be debited/deducted on <date>".
         - upcoming_delivery: a courier's or shop's notice about the user's parcel: picked up, shipped, arriving, out for delivery, or delivered (delivery codes/PINs too; "delivered" stays upcoming_delivery even if it mentions a payment). Not home-service visits (lab sample collection, technicians), cabs or drivers on the way, or personal messages.
         - spam: promotions and marketing: offers, loan/card/insurance offers, "cash/bonus/reward added" from games, apps or wallets to make you play or shop, "credited to your wallet, complete KYC/withdraw now" bait.
         - ignore: everything else, including:
           - OTPs and codes; KYC, account, PIN or app notices; statements; balance or limit alerts; personal messages.
-          - Declined or failed payments; refunds "initiated", "processed" or "will be credited / shall reflect in N days" (not yet credited).
+          - Declined or failed payments; refunds "initiated", "being processed" or "will be credited / shall reflect by <date>" (not yet credited).
           - UPI collect or payment requests still waiting for approval ("has requested money", "on approving ... will be debited"); requests to approve or authorise a mandate; mandates revoked or cancelled.
           - Bill, premium or EMI reminders with a due date but no automatic debit.
           - Receipts from a merchant, biller or service: order placed or confirmed, recharge successful, booking or ticket confirmed, units allotted, "receipt of Rs X towards <biller> A/c", "received by Card for the Service", tax or GST payment confirmations (GSTN, CPIN, challan), broker or fund-house payouts "processed, funds will reach your bank", payment-gateway confirmations (PayU, Razorpay "transaction ... has succeeded"), card-terminal e-receipts (Card, Auth code, RRN fields). The bank, card or wallet alert records that money.
@@ -143,6 +142,14 @@ object AiSchema {
         - ref_no: the transaction reference (Ref, RRN, UTR, IMPS/NEFT ref, "UPI: <digits>", transaction number) as written. Copy it whole with any letter prefix ("CMS123456", "N123..."). In "NEFT Cr-<IFSC>-<payer>-...-<UTR>" it is the UTR (the last segment). Never an IFSC code (4 letters, "0", 6 characters), phone number or card number.
         - txn_datetime: when the money moved, as YYYY-MM-DDTHH:MM in India time. If the SMS gives a date without a time, use that date with the received time. If no date, null. A date without a year is in the year of the received date.
         - due_date: YYYY-MM-DD for upcoming items. title: a short name for an upcoming item.
+
+        YOUR DECISIONS. Set by the user for grey areas; they override the general rules above.
+        1. Wallet top-ups ("Wallet recharge of Rs X is successful", "your wallet has been top-up with Rs X"): ignore. The bank's debit SMS records that money.
+        2. Paying from an app wallet or gift card ("Your payment of Rs X using <app> Gift Card is successful", "Payment of Rs X from <app> Money Balance is successful", Paytm wallet payments): ignore.
+        3. Cashback, rewards or points added to an app or wallet ("Rs X added to Zomato Money", "You got Rs X Paytm Cashback", reward points): ignore.
+        4. Paytm Deals receipts ("Bill of Rs X paid successfully to <shop> via Paytm Deals"): ignore. The bank or UPI SMS records the payment.
+        5. Credit alerts from unknown senders with a short link ("Transfer Received: Rs X ... Check now bit.ly/...", "Credited: Rs X ... View Now: bit.ly/..."): spam.
+        6. Refunds that a shop sends in stages (Zomato): only the final message, "has been successfully processed and shall reflect in your account by now", is a transaction (direction in, is_refund true). The "initiated" and "is being processed ... by <date>" messages are ignore.
     """.trimIndent()
 }
 

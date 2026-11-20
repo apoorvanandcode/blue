@@ -239,3 +239,78 @@ expect:
 class: UPCOMING_DELIVERY
 rule: delivery.out_for_delivery
 delivery: OUT_FOR_DELIVERY
+
+=== Shop refund, final stage counts (added 1.2.2)
+sender: JM-ZOMATO
+received: 2026-03-05 21:10
+body:
+Refund of ₹412.30 for your Zomato order from Curry Corner has been successfully processed and shall reflect in your account by now. To track your refund please click here: https://bnc.lt/x -ZOMATO
+expect:
+class: TRANSACTION
+rule: general.refund_final
+amount: 412.30
+direction: IN
+refund: true
+
+=== Shop refund, earlier stages are ignored (added 1.2.2)
+sender: JM-ZOMATO
+received: 2026-03-05 19:10
+body:
+Refund of ₹412.30 for your Zomato order from Curry Corner is being processed and shall reflect in your account by Mar 12 2026 RRN: ZTD-1-AB12 -ZOMATO
+expect:
+class: IGNORE
+rule: general.refund_initiated
+
+=== Wallet top-up is ignored (added 1.2.2)
+sender: VM-PORTER
+received: 2026-02-01 10:00
+body:
+Wallet recharge of Rs. 250.0 is successful. Kindly, check your Porter Wallet for the updated balance : Porter
+expect:
+class: IGNORE
+rule: general.wallet_topup
+
+=== Gift card payment is ignored (added 1.2.2)
+sender: AD-ZEPTON
+received: 2026-02-02 10:00
+body:
+Dear Customer, Your payment of Rs.149.00 using Zepto Gift Card is successful. Updated Gift Card balance is Rs.0.00.
+expect:
+class: IGNORE
+rule: general.wallet_spend
+
+=== Cashback added to an app is ignored (added 1.2.2)
+sender: AD-ZOMATO
+received: 2026-02-03 10:00
+body:
+Rs. 12.50 added to Zomato Money (on mobile ending with **1111). This balance expires on 15 Nov 2026. -ZOMATO
+expect:
+class: IGNORE
+rule: general.cashback
+
+=== Paytm Deals receipt is ignored (added 1.2.2)
+sender: AD-iPaytm
+received: 2026-02-04 10:00
+body:
+Bill of Rs 480 paid successfully to Noodle House via Paytm Deals on 10:39 PM, Feb 4, 2026. You got Rs 48 Paytm Cashback. Order ID 1111111111
+expect:
+class: IGNORE
+rule: general.paytm_deals
+
+=== Bait credit with a short link is spam (added 1.2.2)
+sender: AX-MSEFSL
+received: 2026-02-05 10:00
+body:
+Dear Account 1111 Transfer Received: Rs 15000 Amount available in yourwallet Check now. bit.ly/x1y2z3
+expect:
+class: SPAM
+rule: general.bait_credit
+
+=== Paytm wallet payment is ignored (added 1.2.2)
+sender: VM-iPaytm
+received: 2026-02-06 10:00
+body:
+Paid Rs. 64 to Rapido from Paytm Balance. Updated Balance: Paytm Wallet- Rs 120.50. For more details visit Paytm.com/care.
+expect:
+class: IGNORE
+rule: general.wallet_spend
